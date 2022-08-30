@@ -28,6 +28,7 @@ static char lectura;		//donde se guardan los caracteres que se leen del archivo
 #define	PUNTO      		"."
 #define	IDENT      		"ident"
 #define	NUMERO     		"num"
+#define	STRING     		"string"
 #define	CONSTANTE  		"const"
 #define	VARIABLE   		"var"
 #define	PROCEDURE  		"procedure"
@@ -58,6 +59,7 @@ static char lectura;		//donde se guardan los caracteres que se leen del archivo
 #define	PUNTO_COMA    	";"
 #define	COMA			","
 #define	COMILLA_SIMPLE	"'"
+#define	COMILLA_DOBLE	"\""
 #define	FIN_PROGRAMA  	"EOF"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +72,8 @@ string lexado(FILE*);			//separa en tokens el codigo de entrada
 string ident(FILE*);			//identifica palabras clave o identificadores
 string numero(FILE*);			//identifica numeros
 string readString(FILE*);		//si se lee un ' se toma como inicio de string
+
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +165,8 @@ string lexado(FILE *f){
         case '(':	simbolo = PARENTESIS_L;		break;
         case ')':	simbolo = PARENTESIS_R;		break;
         case ';':	simbolo = PUNTO_COMA;		break;
-        case '\'':	simbolo = COMILLA_SIMPLE;	break;
+        case '"':							//simbolo = COMILLA_DOBLE;	break;
+        case '\'':	return readString(f); 	//simbolo = COMILLA_SIMPLE;	break;
         case '>':
             fetch(f);
             if(lectura == '=') simbolo = MAYOR_IGUAL;
@@ -191,8 +196,8 @@ string ident(FILE *f){
     string palabra = "";
 
     while(isalnum(lectura) || lectura == '_'){
-    	string letraCadena(1, lectura);
-        palabra += letraCadena;
+    	string letraString(1, lectura);
+        palabra += letraString;
         fetch(f);
     }
 
@@ -208,16 +213,38 @@ string ident(FILE *f){
 
 string numero(FILE *f){
 
+	string numero = "";
+
     while(isdigit(lectura)){
+    	string numeroString(1, lectura);
+        numero += numeroString;
         fetch(f);
     }
+
+    //en numero el numero que se leyo
 
     return NUMERO;
 }
 
-string readString(){
+string readString(FILE *f){
+	string str = "";
 
+	do{
+		//entre con un ' asiq la salteo
+		fetch(f);
+		if (lectura != '\''){
+			string lecturaString(1, lectura);
+			str += lecturaString;
+		}
+	}
+	while(lectura != '\'');
+
+	//en str tengo la string q se leyo
+
+	fetch(f);
+	return STRING;
 }
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////PARSER
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
