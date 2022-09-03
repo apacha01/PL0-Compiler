@@ -15,6 +15,11 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //STRUCTS
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+typedef struct infoLectura
+{
+    string tokenType;
+    string token;
+} infoLectura;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //VARIBALES GLOBALES
@@ -65,13 +70,18 @@ static char lectura;		//donde se guardan los caracteres que se leen del archivo
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //PROTOTIPOS DE FUNCIONES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void error(string);				//manejo de errores
-FILE* readInputFile(string);	//abre archivo y comprueba que todo este bien
-void fetch();					//lee el sig char
-string lexado(FILE*);			//separa en tokens el codigo de entrada
-string ident(FILE*);			//identifica palabras clave o identificadores
-string numero(FILE*);			//identifica numeros
-string readString(FILE*);		//si se lee un ' se toma como inicio de string
+void error(string);                     //manejo de errores
+FILE* readInputFile(string);            //abre archivo y comprueba que todo este bien
+
+//LEXER
+void fetch();                           //lee el sig char
+void lexer(FILE*,infoLectura*);         //separa en tokens el codigo de entrada
+void ident(FILE*,infoLectura*);         //identifica palabras clave o identificadores
+void numero(FILE*,infoLectura*);        //identifica numeros
+void readString(FILE*,infoLectura*);    //si se lee un ' se toma como inicio de string
+
+//PARSER
+
 
 
 
@@ -86,18 +96,37 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
-    string token;
+/*
+    procedure scanner (var Fuente, Listado: archivo; var S: terminal; var Cad: str63; var Restante: string;
+                        var NumLinea: integer);
+*/
+    //var Fuente: archivo
+    FILE *fuente;
     string filename = argv[1];
-    FILE *archivo;
+    
+    //var Listado: archivo
+    FILE *salida;
+    
+    //var S: terminal;
+    //En el struct linea 18
+    
+    //var Cad: str63;
+    //En el struct linea 18
+    
+    //var NumLinea: integer
+    //variable global en la linea 23
+    
+    infoLectura tokens;
 
-    archivo = readInputFile(filename);
+    fuente = readInputFile(filename);
 
-    fread(&lectura, sizeof(char), 1, archivo);
+    fread(&lectura, sizeof(char), 1, fuente);
 
+    cout<<"linea\t|\tS\t\tCAD"<<endl;
     do{
-        token = lexado(archivo);
-        cout<<token<<endl;
-    } while(token != FIN_PROGRAMA);
+        lexer(fuente, &tokens);
+        cout<<linea<<"\t|\t"<<tokens.tokenType<<(tokens.tokenType != PROCEDURE? "\t\t" : "\t")<<tokens.token<<endl;
+    } while(tokens.tokenType != FIN_PROGRAMA);
 
     cout<<"Todo termino bien en la linea: "<<linea<<endl;
 
@@ -140,59 +169,65 @@ void fetch(FILE *f){
 	fread(&lectura, sizeof(char), 1, f);
 }
 
-string lexado(FILE *f){
+void lexer(FILE *f, infoLectura *il){
 
-	if(feof(f)) return FIN_PROGRAMA;
+	if(feof(f)){
+        il->tokenType = il->token = FIN_PROGRAMA;
+        return;
+    }
 
     while(lectura == ' ' || lectura == '\n' || lectura == '\t'){
     	if (lectura == '\n') linea++;
     	fetch(f);
     }
 
-    if(isalpha(lectura)) return ident(f);
-    if(isdigit(lectura)) return numero(f);
-
-    string simbolo;
+    if(isalpha(lectura)){
+        ident(f, il);
+        return;
+    }
+    if(isdigit(lectura)){
+        numero(f, il);
+        return;
+    }
 
     switch(lectura){
-        case '.':	simbolo = PUNTO; fetch(f);	break;
-        case '=':	simbolo = IGUAL;			break;
-        case '+':	simbolo = SUMA;				break;
-        case '-':	simbolo = RESTA;			break;
-        case ',':	simbolo = COMA;				break;
-        case '*':	simbolo = MULTIPLICACION;	break;
-        case '/':	simbolo = DIVISION;			break;
-        case '(':	simbolo = PARENTESIS_L;		break;
-        case ')':	simbolo = PARENTESIS_R;		break;
-        case ';':	simbolo = PUNTO_COMA;		break;
-        case '"':							//simbolo = COMILLA_DOBLE;	break;
-        case '\'':	return readString(f); 	//simbolo = COMILLA_SIMPLE;	break;
+        case '.':	il->tokenType = il->token = PUNTO; fetch(f);  break;
+        case '=':	il->tokenType = il->token = IGUAL;            break;
+        case '+':	il->tokenType = il->token = SUMA;             break;
+        case '-':	il->tokenType = il->token = RESTA;            break;
+        case ',':	il->tokenType = il->token = COMA;             break;
+        case '*':	il->tokenType = il->token = MULTIPLICACION;   break;
+        case '/':	il->tokenType = il->token = DIVISION;         break;
+        case '(':	il->tokenType = il->token = PARENTESIS_L;     break;
+        case ')':	il->tokenType = il->token = PARENTESIS_R;     break;
+        case ';':	il->tokenType = il->token = PUNTO_COMA;       break;
+        case '"':                                //il->tokenType = il->token = COMILLA_DOBLE;	break;
+        case '\'':	readString(f, il);   return; //il->tokenType = il->token = COMILLA_SIMPLE;	break;
         case '>':
             fetch(f);
-            if(lectura == '=') simbolo = MAYOR_IGUAL;
-            else simbolo = MAYOR;
+            if(lectura == '=') il->tokenType = il->token = MAYOR_IGUAL;
+            else il->tokenType = il->token = MAYOR;
             break;
         case '<':
             fetch(f);
             switch(lectura){
-                case '=':	simbolo = MENOR_IGUAL;	break;
-                case '>':	simbolo = DISTINTO;		break;
-                default:	simbolo = MENOR;		break;
+                case '=':	il->tokenType = il->token = MENOR_IGUAL;  break;
+                case '>':	il->tokenType = il->token = DISTINTO;     break;
+                default:	il->tokenType = il->token = MENOR;		  break;
             }
             break;
         case ':':
             fetch(f);
-            if(lectura == '=') simbolo = ASIGNACION;
+            if(lectura == '=') il->tokenType = il->token = ASIGNACION;
             else error("caracter inesperado despues del ':'.");
             break;
         default: error("al leer caracter."); break;
     }
 
     fetch(f);
-    return simbolo;
 }
 
-string ident(FILE *f){
+void ident(FILE *f, infoLectura *il){
     string palabra = "";
 
     while(isalnum(lectura) || lectura == '_'){
@@ -201,32 +236,35 @@ string ident(FILE *f){
         fetch(f);
     }
 
-    //ASD PASAR A UPPER O LOWER CASE
+    //paso todo a minus
+    for (int i = 0; i < palabra.length(); i++) palabra[i] = tolower(palabra[i]);
 
     if(palabra == CONSTANTE || palabra == VARIABLE || palabra == PROCEDURE || palabra == CALL || 
     	palabra == BEGIN || palabra == END || palabra == IF || palabra == THEN || palabra == WHILE || 
     	palabra == DO || palabra == ODD || palabra == ESCRIBIR || palabra == ESCRIBIR_LN || 
     	palabra == LEER_LN)
-            return palabra;
-    else return IDENT;
+            il->tokenType = il->token = palabra;
+    else{
+        il->tokenType = IDENT;
+        il->token = palabra;
+    }
 }
 
-string numero(FILE *f){
+void numero(FILE *f, infoLectura *il){
 
-	string numero = "";
+	string num = "";
 
     while(isdigit(lectura)){
     	string numeroString(1, lectura);
-        numero += numeroString;
+        num += numeroString;
         fetch(f);
     }
 
-    //en numero el numero que se leyo
-
-    return NUMERO;
+    il->tokenType = NUMERO;
+    il->token = num;
 }
 
-string readString(FILE *f){
+void readString(FILE *f, infoLectura *il){
 	string str = "";
 
 	do{
@@ -240,36 +278,12 @@ string readString(FILE *f){
 	while(lectura != '\'');
 
 	//en str tengo la string q se leyo
+    il->tokenType = STRING;
+    il->token = str;
 
 	fetch(f);
-	return STRING;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////PARSER
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
