@@ -26,64 +26,82 @@ typedef struct infoLectura
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static int linea = 0;		//para saber cuantas lineas tiene el codigo fuente
 static char lectura;		//donde se guardan los caracteres que se leen del archivo
+static infoLectura tokens;	//donde se guarda la info de lo que se lee
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //CONSTANTES GLOBALES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define	PUNTO      		"."
-#define	IDENT      		"ident"
-#define	NUMERO     		"num"
-#define	STRING     		"string"
-#define	CONSTANTE  		"const"
-#define	VARIABLE   		"var"
-#define	PROCEDURE  		"procedure"
-#define	CALL       		"call"
-#define	BEGIN      		"begin"
-#define	END        		"end"
-#define	IF         		"if"
-#define	THEN       		"then"
-#define	WHILE      		"while"
-#define	DO         		"do"
-#define	ODD        		"odd"
-#define	ESCRIBIR   		"write"
-#define	ESCRIBIR_LN		"writeln"
-#define	LEER_LN    		"readln"
-#define	IGUAL      		"="
-#define	DISTINTO   		"<>"
-#define	MAYOR      		">"
-#define	MENOR      		"<"
-#define	MAYOR_IGUAL		">="
-#define	MENOR_IGUAL		"<="
-#define	SUMA       		"+"
-#define	RESTA      		"-"
-#define	MULTIPLICACION	"*"
-#define	DIVISION      	"/"
-#define	PARENTESIS_L  	"("
-#define	PARENTESIS_R  	")"
-#define	ASIGNACION    	":="
-#define	PUNTO_COMA    	";"
-#define	COMA			","
-#define	COMILLA_SIMPLE	"'"
-#define	COMILLA_DOBLE	"\""
-#define	FIN_PROGRAMA  	"EOF"
+#define	__PUNTO      		"."
+#define	__IDENT      		"ident"
+#define	__NUMERO     		"num"
+#define	__STRING     		"string"
+#define	__CONSTANTE  		"const"
+#define	__VARIABLE   		"var"
+#define	__PROCEDURE  		"procedure"
+#define	__CALL       		"call"
+#define	__BEGIN      		"begin"
+#define	__END        		"end"
+#define	__IF         		"if"
+#define	__THEN       		"then"
+#define	__WHILE      		"while"
+#define	__DO         		"do"
+#define	__ODD        		"odd"
+#define	__ESCRIBIR   		"write"
+#define	__ESCRIBIR_LN		"writeln"
+#define	__LEER_LN    		"readln"
+#define	__IGUAL      		"="
+#define	__DISTINTO   		"<>"
+#define	__MAYOR      		">"
+#define	__MENOR      		"<"
+#define	__MAYOR_IGUAL		">="
+#define	__MENOR_IGUAL		"<="
+#define	__SUMA       		"+"
+#define	__RESTA      		"-"
+#define	__MULTIPLICACION	"*"
+#define	__DIVISION      	"/"
+#define	__PARENTESIS_L  	"("
+#define	__PARENTESIS_R  	")"
+#define	__ASIGNACION    	":="
+#define	__PUNTO_COMA    	";"
+#define	__COMA			    ","
+#define	__COMILLA_SIMPLE	"'"
+#define	__COMILLA_DOBLE	    "\""
+#define	__FIN_PROGRAMA  	"EOF"
+
+//MANEJO DE ERRORES
+#define ERROR_LEXICO    400
+#define ERROR_SINTAX    401
+#define ERROR_SEMANT    402
+#define ERROR_ATFILE    403
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //PROTOTIPOS DE FUNCIONES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void error(string);                     //manejo de errores
-FILE* readInputFile(string);            //abre archivo y comprueba que todo este bien
+void error(string,int);			// manejo de errores
+FILE* readInputFile(string);	// abre archivo y comprueba que todo este bien
 
 //LEXER
-void fetch();                           //lee el sig char
-void lexer(FILE*,infoLectura*);         //separa en tokens el codigo de entrada
-void ident(FILE*,infoLectura*);         //identifica palabras clave o identificadores
-void numero(FILE*,infoLectura*);        //identifica numeros
-void readString(FILE*,infoLectura*);    //si se lee un ' se toma como inicio de string
+void fetch(FILE*);		    // lee el sig char
+void lexer(FILE*);		    // separa en tokens el codigo de entrada
+void ident(FILE*);		    // identifica palabras clave o identificadores
+void numero(FILE*);         // identifica numeros
+void readString(FILE*);		// si se lee un ' se toma como inicio de string
 
 //PARSER
-
-
-
+//R2. Declarar para cada grafo un procedimiento que contenga las sentencias resultantes de aplicarle al 
+//grafo las reglas R3 a R7.
+void parser(FILE*);                 // checkea la sintaxis del codigo
+void pedirLex(FILE*);               // le pide al lexer el siguiente token/palabra
+void expectativa(string,FILE*);     // checkea si el token es el esperado sintacticamente, error si no
+void programa(FILE*);               // procesa el grafo de programa del lenguaje
+void bloque(FILE*);                 // procesa el grafo de bloque del lenguaje
+void proposicion(FILE*);            // procesa el grafo de proposicion del lenguaje
+void condicion(FILE*);              // procesa el grafo de condicion del lenguaje
+void expresion(FILE*);              // procesa el grafo de expresion del lenguaje
+void termino(FILE*);                // procesa el grafo de termino del lenguaje
+void factor(FILE*);                 // procesa el grafo de factor del lenguaje
+void cadena(FILE*);                 // procesa la lectura de cadenas
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,20 +133,20 @@ int main(int argc, char *argv[]){
     
     //var NumLinea: integer
     //variable global en la linea 23
-    
-    infoLectura tokens;
 
     fuente = readInputFile(filename);
 
-    fread(&lectura, sizeof(char), 1, fuente);
+    if (fuente == NULL) exit(1);
+
+    fetch(fuente);
 
     cout<<"linea\t|\tS\t\tCAD"<<endl;
     do{
-        lexer(fuente, &tokens);
-        cout<<linea<<"\t|\t"<<tokens.tokenType<<(tokens.tokenType != PROCEDURE? "\t\t" : "\t")<<tokens.token<<endl;
-    } while(tokens.tokenType != FIN_PROGRAMA);
+        lexer(fuente);
+        parser(fuente);
+    } while(tokens.tokenType != __FIN_PROGRAMA);
 
-    cout<<"Todo termino bien en la linea: "<<linea<<endl;
+    cout<<"Todo termino en la linea: "<<linea<<endl;
 
     return 0;
 }
@@ -140,7 +158,7 @@ int main(int argc, char *argv[]){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////LEXER
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void error(string msj){
+void error(string msj, int errorType){
 	linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<endl;
 }
 
@@ -148,7 +166,7 @@ FILE* readInputFile(string filename){
 
 	//me aseguro que tenga .pl0
 	if (filename.find(".pl0") == string::npos){
-		error("archivo " + filename + " no termina en '.pl0'");
+		error("archivo " + filename + " no termina en '.pl0'", ERROR_ATFILE);
 		exit(1);
 	}
 
@@ -156,7 +174,7 @@ FILE* readInputFile(string filename){
 
 	//no se pudo abrir
 	if (archivo == NULL){
-		error("No se pudo abrir el archivo: " + filename);
+		error("No se pudo abrir el archivo: " + filename, ERROR_ATFILE);
 		exit(1);
 	}
 	//se abrio y en archivo tengo el puntero
@@ -167,12 +185,24 @@ FILE* readInputFile(string filename){
 
 void fetch(FILE *f){
 	fread(&lectura, sizeof(char), 1, f);
+
+    if (feof(f) && tokens.tokenType != __PUNTO){
+        error("falta el punto ('.') final.", ERROR_SINTAX);
+        exit(1);
+    }
 }
+/*
+La tarea del analizador léxico consiste en:
+ a. Saltear los separadores (blancos, tabulaciones, comentarios).
+ b. Reconocer los símbolos válidos e informar sobre los no válidos.
+ c. Llevar la cuenta de los renglones del programa.
+ d. Copiar los caracteres de entrada a la salida, generando un listado
+ con los renglones numerados.
+*/
+void lexer(FILE *f){
 
-void lexer(FILE *f, infoLectura *il){
-
-	if(feof(f)){
-        il->tokenType = il->token = FIN_PROGRAMA;
+    if(feof(f)){
+        tokens.tokenType = tokens.token = __FIN_PROGRAMA;
         return;
     }
 
@@ -182,52 +212,52 @@ void lexer(FILE *f, infoLectura *il){
     }
 
     if(isalpha(lectura)){
-        ident(f, il);
+        ident(f);
         return;
     }
     if(isdigit(lectura)){
-        numero(f, il);
+        numero(f);
         return;
     }
 
     switch(lectura){
-        case '.':	il->tokenType = il->token = PUNTO; fetch(f);  break;
-        case '=':	il->tokenType = il->token = IGUAL;            break;
-        case '+':	il->tokenType = il->token = SUMA;             break;
-        case '-':	il->tokenType = il->token = RESTA;            break;
-        case ',':	il->tokenType = il->token = COMA;             break;
-        case '*':	il->tokenType = il->token = MULTIPLICACION;   break;
-        case '/':	il->tokenType = il->token = DIVISION;         break;
-        case '(':	il->tokenType = il->token = PARENTESIS_L;     break;
-        case ')':	il->tokenType = il->token = PARENTESIS_R;     break;
-        case ';':	il->tokenType = il->token = PUNTO_COMA;       break;
-        case '"':                                //il->tokenType = il->token = COMILLA_DOBLE;	break;
-        case '\'':	readString(f, il);   return; //il->tokenType = il->token = COMILLA_SIMPLE;	break;
+        case '.':	tokens.tokenType = tokens.token = __PUNTO; fetch(f);  break;
+        case '=':	tokens.tokenType = tokens.token = __IGUAL;            break;
+        case '+':	tokens.tokenType = tokens.token = __SUMA;             break;
+        case '-':	tokens.tokenType = tokens.token = __RESTA;            break;
+        case ',':	tokens.tokenType = tokens.token = __COMA;             break;
+        case '*':	tokens.tokenType = tokens.token = __MULTIPLICACION;   break;
+        case '/':	tokens.tokenType = tokens.token = __DIVISION;         break;
+        case '(':	tokens.tokenType = tokens.token = __PARENTESIS_L;     break;
+        case ')':	tokens.tokenType = tokens.token = __PARENTESIS_R;     break;
+        case ';':	tokens.tokenType = tokens.token = __PUNTO_COMA;       break;
+        case '"':                            //tokens.tokenType = tokens.token = __COMILLA_DOBLE;	break;
+        case '\'':	readString(f);   return; //tokens.tokenType = tokens.token = __COMILLA_SIMPLE;	break;
         case '>':
             fetch(f);
-            if(lectura == '=') il->tokenType = il->token = MAYOR_IGUAL;
-            else il->tokenType = il->token = MAYOR;
+            if(lectura == '=') tokens.tokenType = tokens.token = __MAYOR_IGUAL;
+            else tokens.tokenType = tokens.token = __MAYOR;
             break;
         case '<':
             fetch(f);
             switch(lectura){
-                case '=':	il->tokenType = il->token = MENOR_IGUAL;  break;
-                case '>':	il->tokenType = il->token = DISTINTO;     break;
-                default:	il->tokenType = il->token = MENOR;		  break;
+                case '=':	tokens.tokenType = tokens.token = __MENOR_IGUAL;  break;
+                case '>':	tokens.tokenType = tokens.token = __DISTINTO;     break;
+                default:	tokens.tokenType = tokens.token = __MENOR;		  break;
             }
             break;
         case ':':
             fetch(f);
-            if(lectura == '=') il->tokenType = il->token = ASIGNACION;
-            else error("caracter inesperado despues del ':'.");
+            if(lectura == '=') tokens.tokenType = tokens.token = __ASIGNACION;
+            else error("caracter inesperado despues del ':'.", ERROR_LEXICO);
             break;
-        default: error("al leer caracter."); break;
+        default: error("al leer caracter.", ERROR_LEXICO); break;
     }
 
     fetch(f);
 }
 
-void ident(FILE *f, infoLectura *il){
+void ident(FILE *f){
     string palabra = "";
 
     while(isalnum(lectura) || lectura == '_'){
@@ -239,18 +269,18 @@ void ident(FILE *f, infoLectura *il){
     //paso todo a minus
     for (int i = 0; i < palabra.length(); i++) palabra[i] = tolower(palabra[i]);
 
-    if(palabra == CONSTANTE || palabra == VARIABLE || palabra == PROCEDURE || palabra == CALL || 
-    	palabra == BEGIN || palabra == END || palabra == IF || palabra == THEN || palabra == WHILE || 
-    	palabra == DO || palabra == ODD || palabra == ESCRIBIR || palabra == ESCRIBIR_LN || 
-    	palabra == LEER_LN)
-            il->tokenType = il->token = palabra;
+    if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
+    	palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE || 
+    	palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN || 
+    	palabra == __LEER_LN)
+            tokens.tokenType = tokens.token = palabra;
     else{
-        il->tokenType = IDENT;
-        il->token = palabra;
+        tokens.tokenType = __IDENT;
+        tokens.token = palabra;
     }
 }
 
-void numero(FILE *f, infoLectura *il){
+void numero(FILE *f){
 
 	string num = "";
 
@@ -260,30 +290,301 @@ void numero(FILE *f, infoLectura *il){
         fetch(f);
     }
 
-    il->tokenType = NUMERO;
-    il->token = num;
+    tokens.tokenType = __NUMERO;
+    tokens.token = num;
 }
 
-void readString(FILE *f, infoLectura *il){
+void readString(FILE *f){
 	string str = "";
-
+    char stringChar = lectura;
 	do{
-		//entre con un ' asiq la salteo
-		fetch(f);
-		if (lectura != '\''){
-			string lecturaString(1, lectura);
-			str += lecturaString;
-		}
+        //entre con un ' o " asiq la salteo
+        fetch(f);
+
+        //me encontre el final de string
+        if(lectura == stringChar) {
+            tokens.tokenType = __STRING;
+            tokens.token = str;
+            fetch(f);
+            return;
+        }
+
+        switch(stringChar){
+            case '\'':
+                //agrego \ para el uso de strings en cpp
+                if (lectura == '\"') str += "\\";
+            case '\"':
+                if(lectura == '\n') linea++;
+
+                string lecturaString(1, lectura);
+                str += lecturaString;
+
+                if(feof(f)){
+                    tokens.tokenType = tokens.token = __FIN_PROGRAMA;
+                    error("string sin terminar.", ERROR_LEXICO);
+                    return;
+                }
+                break;
+        }
 	}
 	while(lectura != '\'');
-
-	//en str tengo la string q se leyo
-    il->tokenType = STRING;
-    il->token = str;
-
-	fetch(f);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////PARSER
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void expectativa(string tokEsperado, FILE* f){
+
+    if (tokEsperado != tokens.tokenType)    {
+        error("error sintactico.", ERROR_SINTAX);
+        cout<<"Tengo: "<<tokens.tokenType<<"   Esperaba: "<<tokEsperado<<endl;
+    }
+
+    cout<<linea<<"\t|\t"<<tokens.tokenType<<(tokens.tokenType != __PROCEDURE ? "\t\t" : "\t")<<tokens.token<<endl;
+    pedirLex(f);
+}
+
+void pedirLex(FILE* f){
+    lexer(f);
+}
+
+void parser(FILE* f){
+    //Primer token/palabra para analizar
+    programa(f);
+}
+
+//programa = <bloque> + "."
+void programa(FILE* f){
+    bloque(f);
+    expectativa(__PUNTO, f);
+}
+
+//bloque = ["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
+//          |["var" <ident> ["," <ident>] ";"]
+//          |{"procedure" <ident> ";" <bloque>} <proposicion>
+void bloque(FILE* f){
+
+    //["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
+    if (tokens.tokenType == __CONSTANTE){
+        expectativa(__CONSTANTE, f);
+        expectativa(__IDENT, f);
+        expectativa(__IGUAL, f);
+        expectativa(__NUMERO, f);
+
+        while(tokens.tokenType == __COMA){
+            expectativa(__COMA, f);
+            expectativa(__IDENT, f);
+            expectativa(__IGUAL, f);
+            expectativa(__NUMERO, f);
+        }
+
+        expectativa(__PUNTO_COMA, f);
+    }
+
+    //["var" <ident> ["," <ident>] ";"]
+    if (tokens.tokenType == __VARIABLE){
+        expectativa(__VARIABLE, f);
+        expectativa(__IDENT, f);
+        while(tokens.tokenType == __COMA){
+            expectativa(__COMA, f);
+            expectativa(__IDENT, f);
+        }
+        expectativa(__PUNTO_COMA, f);
+    }
+
+    //{"procedure" <ident> ";" <bloque> ";"}
+    while (tokens.tokenType == __PROCEDURE){
+        expectativa(__PROCEDURE, f);
+        expectativa(__IDENT, f);
+        expectativa(__PUNTO_COMA, f);
+        bloque(f);
+        expectativa(__PUNTO_COMA, f);
+    }
+
+    //<proposicion>
+    proposicion(f);
+}
+
+/*
+proposicion =   [<ident> ":=" <expresion>
+            | "call" <ident>
+            | "begin" <proposicion> { ";" <proposicion> } "end"
+            | "if" <condicion> "then" <proposicion>
+            | "while" <condicion> "do" <proposicion>
+            | "readln" "(" <ident> {"," <ident>} ")"
+            | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
+            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+*/
+void proposicion(FILE* f){
+
+        //[<ident> ":=" <expresion>
+        if (tokens.tokenType == __IDENT){
+            expectativa(__IDENT, f);
+            expectativa(__ASIGNACION, f);
+            expresion(f);
+        }
+
+        //| "call" <ident>
+        else if (tokens.tokenType == __CALL){
+            expectativa(__CALL, f);
+            expectativa(__IDENT, f);
+        }
+
+        //| "begin" <proposicion> { ";" <proposicion> } "end"
+        else if (tokens.tokenType == __BEGIN){
+            expectativa(__BEGIN, f);
+            proposicion(f);
+            while(tokens.tokenType == __PUNTO_COMA){
+                expectativa(__PUNTO_COMA, f);
+                proposicion(f);
+            }
+            expectativa(__END, f);
+        }
+
+        //| "if" <condicion> "then" <proposicion>
+        else if (tokens.tokenType == __IF){
+            expectativa(__IF, f);
+            condicion(f);
+            expectativa(__THEN, f);
+            proposicion(f);
+        }
+
+        //| "while" <condicion> "do" <proposicion>
+        else if (tokens.tokenType == __WHILE){
+            expectativa(__WHILE, f);
+            condicion(f);
+            expectativa(__DO, f);
+            proposicion(f);
+        }
+
+        //| "readln" "(" <ident> {"," <ident>} ")"
+        else if (tokens.tokenType == __LEER_LN){
+            expectativa(__LEER_LN, f);
+            expectativa(__PARENTESIS_L, f);
+            expectativa(__IDENT, f);
+            while(tokens.tokenType == __COMA){
+                expectativa(__COMA, f);
+                expectativa(__IDENT, f);
+            }
+            expectativa(__PARENTESIS_R, f);
+        }
+
+        //| "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
+        else if (tokens.tokenType == __ESCRIBIR){
+            expectativa(__ESCRIBIR, f);
+            expectativa(__PARENTESIS_L, f);
+
+            if (tokens.tokenType == __STRING)   cadena(f);
+            else    expresion(f);
+
+            while(tokens.tokenType == __COMA){
+                expectativa(__COMA, f);
+                if (tokens.tokenType == __STRING)   cadena(f);
+                else    expresion(f);
+            }
+
+            expectativa(__PARENTESIS_R, f);
+        }
+
+        //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+        else if (tokens.tokenType == __ESCRIBIR_LN){
+            expectativa(__ESCRIBIR_LN, f);
+
+            if (tokens.tokenType == __PARENTESIS_L){
+                expectativa(__PARENTESIS_L, f);
+
+                if (tokens.tokenType == __STRING)   cadena(f);
+                else    expresion(f);
+
+                while(tokens.tokenType == __COMA){
+                    expectativa(__COMA, f);
+                    if (tokens.tokenType == __STRING)   cadena(f);
+                    else    expresion(f);
+                }
+
+                expectativa(__PARENTESIS_R, f);
+            }
+        }
+}
+
+//expresion = ["+" | "-"] <termino> {("+" | "-") <termino>}
+void expresion(FILE* f){
+    if (tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
+        pedirLex(f);
+    }
+    termino(f);
+
+    while(tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
+        pedirLex(f);
+        termino(f);
+    }
+}
+
+//termino = <factor> {("*" | "/") <factor>}
+void termino(FILE* f){
+    factor(f);
+    while(tokens.tokenType == __MULTIPLICACION || tokens.tokenType == __DIVISION){
+        pedirLex(f);
+        factor(f);
+    }
+}
+
+/*
+factor = <ident>
+    |<numero>
+    |"(" <expresion> ")"
+*/
+void factor(FILE* f){
+    if (tokens.tokenType == __IDENT){
+        expectativa(__IDENT, f);
+    }
+    else if(tokens.tokenType == __NUMERO){
+        expectativa(__NUMERO, f);
+    }
+    else if (tokens.tokenType == __PARENTESIS_L){
+        expectativa(__PARENTESIS_L, f);
+        expresion(f);
+        expectativa(__PARENTESIS_R, f);
+    }
+}
+
+/*
+condicion = "odd" <expresion>
+        |<expresion> ("=" | "<>" | "<" | "<=" | ">" | ">=") <expresion>
+*/
+void condicion(FILE* f){
+    if (tokens.tokenType == __ODD){
+        expectativa(__ODD, f);
+        expresion(f);
+    }
+    else {
+        expresion(f);
+        
+        if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
+             || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
+            pedirLex(f);
+        }
+        else error("comparador invalido.", ERROR_SINTAX);
+
+        expresion(f);
+    }
+}
+
+//cadena = "'" {az-AZ0_09} "'"
+void cadena(FILE* f){
+    expectativa(__STRING, f);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

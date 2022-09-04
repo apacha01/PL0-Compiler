@@ -1,0 +1,22 @@
+R1. Reducir el sistema de grafos a la menor cantidad de grafos que sea posible, realizando para ello las sustituciones que sean necesarias.
+
+R2. Declarar para cada grafo un procedimiento que contenga las sentencias resultantes de aplicarle al grafo las reglas R3 a R7.
+
+R3. Una secuencia de elementos se traduce como una sentencia compuesta:
+
+R4. Una opción entre elementos se traduce como una sentencia condicional:
+ if SIM in L1 then T(S1) else
+ if SIM in L2 then T(S2) else
+ ....
+ if SIM in Ln then T(Sn);
+ 
+ Donde SIM es el símbolo devuelto por el analizador léxico y Li es el conjunto de símbolos iniciales de Si. Siempre que Li conste de un único símbolo a, "SIM in Li" podrá expresarse como "SIM = a"
+
+R5. Un bucle se traduce como la sentencia:
+ while SIM in L do T(S)
+
+R6. Una referencia a otro grafo A se traduce como una sentencia de llamada al procedimiento A
+
+R7. Una referencia a un símbolo terminal x se traduce como la sentencia:
+ if SIM = x then SCANNER(SIM) else ERROR
+ donde ERROR es un procedimiento encargado del tratamiento de los errores.
