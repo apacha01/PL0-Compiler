@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string>
+#include <cstdlib>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //USING NAMESPACE
@@ -21,12 +22,21 @@ typedef struct infoLectura
     string token;
 } infoLectura;
 
+typedef struct tablaSimbolos
+{
+    string nombre;
+    string tipo;
+    int valor;
+    tablaSimbolos *sig;
+} tablaSimbolos;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //VARIBALES GLOBALES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static int linea = 0;		//para saber cuantas lineas tiene el codigo fuente
 static char lectura;		//donde se guardan los caracteres que se leen del archivo
 static infoLectura tokens;	//donde se guarda la info de lo que se lee
+static tablaSimbolos *base; //entrada de la tabla
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //CONSTANTES GLOBALES
@@ -68,28 +78,24 @@ static infoLectura tokens;	//donde se guarda la info de lo que se lee
 #define	__COMILLA_DOBLE	    "\""
 #define	__FIN_PROGRAMA  	"EOF"
 
-//MANEJO DE ERRORES
-#define ERROR_LEXICO    400
-#define ERROR_SINTAX    401
-#define ERROR_SEMANT    402
-#define ERROR_ATFILE    403
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //PROTOTIPOS DE FUNCIONES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void error(string,int);			// manejo de errores
-FILE* readInputFile(string);	// abre archivo y comprueba que todo este bien
+void error(string,int,string);	    // manejo de errores
+void errorLex(string);              // manejo de errores lexicos
+void errorSintax(string, string);   //manejo de errores sintacticos
+void errorSemant(string,int);       //manejo de errores semanticos
+FILE* readInputFile(string);	    // abre archivo y comprueba que todo este bien
 
 //LEXER
 void fetch(FILE*);		    // lee el sig char
 void lexer(FILE*);		    // separa en tokens el codigo de entrada
 void ident(FILE*);		    // identifica palabras clave o identificadores
 void numero(FILE*);         // identifica numeros
-void readString(FILE*);		// si se lee un ' se toma como inicio de string
+void cadena(FILE*);		    // si se lee un ' se toma como inicio de string
 
 //PARSER
-//R2. Declarar para cada grafo un procedimiento que contenga las sentencias resultantes de aplicarle al 
+//R2. Declarar para cada grafo un procedimiento que contenga las sentencias resultantes de aplicarle al
 //grafo las reglas R3 a R7.
 void parser(FILE*);                 // checkea la sintaxis del codigo
 void pedirLex(FILE*);               // le pide al lexer el siguiente token/palabra
@@ -121,16 +127,16 @@ int main(int argc, char *argv[]){
     //var Fuente: archivo
     FILE *fuente;
     string filename = argv[1];
-    
+
     //var Listado: archivo
     FILE *salida;
-    
+
     //var S: terminal;
     //En el struct linea 18
-    
+
     //var Cad: str63;
     //En el struct linea 18
-    
+
     //var NumLinea: integer
     //variable global en la linea 23
 
@@ -158,25 +164,48 @@ int main(int argc, char *argv[]){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////LEXER
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void error(string msj, int errorType){
-	linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<endl;
+void error(string msj){
+    linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<(msj.find(".") ? " " : ". ");
+    cout<<endl<<endl;
+    //en cuanto detecta un error se sale
+    exit(1);
+}
+
+void errorLex(string msj){
+    linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<(msj.find(".") ? " " : ". ");
+    cout<<"No se reconoce el carcater: "<<lectura<<endl;
+    cout<<endl<<endl;
+    //en cuanto detecta un error se sale
+    exit(1);
+}
+
+void errorSintax(string msj, string tok){
+    linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<(msj.find(".") ? " " : ". ");
+    cout<<"Se tiene el token: '"<<tokens.tokenType<<"' y se esperaba: '"<<tok<<"'";
+    cout<<endl<<endl;
+    //en cuanto detecta un error se sale
+    exit(1);
+}
+
+void errorSemant(string msj, int lor){
+    linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<(msj.find(".") ? " " : ". ");
+    cout<<""<<endl;
+    cout<<endl<<endl;
+    //en cuanto detecta un error se sale
+    exit(1);
 }
 
 FILE* readInputFile(string filename){
 
 	//me aseguro que tenga .pl0
-	if (filename.find(".pl0") == string::npos){
-		error("archivo " + filename + " no termina en '.pl0'", ERROR_ATFILE);
-		exit(1);
-	}
+	if (filename.find(".pl0") == string::npos && filename.find(".PL0") == string::npos)
+        error("archivo " + filename + " no termina en '.pl0'");
 
 	FILE *archivo = fopen(filename.c_str(), "r");
 
 	//no se pudo abrir
-	if (archivo == NULL){
-		error("No se pudo abrir el archivo: " + filename, ERROR_ATFILE);
-		exit(1);
-	}
+	if (archivo == NULL)   error("No se pudo abrir el archivo: " + filename);
+
 	//se abrio y en archivo tengo el puntero
 	else { linea++; return archivo; }
 
@@ -187,7 +216,7 @@ void fetch(FILE *f){
 	fread(&lectura, sizeof(char), 1, f);
 
     if (feof(f) && tokens.tokenType != __PUNTO){
-        error("falta el punto ('.') final.", ERROR_SINTAX);
+        errorSintax("falta el punto ('.') final.", ".");
         exit(1);
     }
 }
@@ -232,7 +261,7 @@ void lexer(FILE *f){
         case ')':	tokens.tokenType = tokens.token = __PARENTESIS_R;     break;
         case ';':	tokens.tokenType = tokens.token = __PUNTO_COMA;       break;
         case '"':                            //tokens.tokenType = tokens.token = __COMILLA_DOBLE;	break;
-        case '\'':	readString(f);   return; //tokens.tokenType = tokens.token = __COMILLA_SIMPLE;	break;
+        case '\'':	cadena(f);   return; //tokens.tokenType = tokens.token = __COMILLA_SIMPLE;	break;
         case '>':
             fetch(f);
             if(lectura == '=') tokens.tokenType = tokens.token = __MAYOR_IGUAL;
@@ -249,9 +278,9 @@ void lexer(FILE *f){
         case ':':
             fetch(f);
             if(lectura == '=') tokens.tokenType = tokens.token = __ASIGNACION;
-            else error("caracter inesperado despues del ':'.", ERROR_LEXICO);
+            else errorLex("caracter inesperado despues del ':'.");
             break;
-        default: error("al leer caracter.", ERROR_LEXICO); break;
+        default: errorLex("al leer caracter."); break;
     }
 
     fetch(f);
@@ -270,8 +299,8 @@ void ident(FILE *f){
     for (int i = 0; i < palabra.length(); i++) palabra[i] = tolower(palabra[i]);
 
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
-    	palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE || 
-    	palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN || 
+    	palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
+    	palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
     	palabra == __LEER_LN)
             tokens.tokenType = tokens.token = palabra;
     else{
@@ -294,7 +323,7 @@ void numero(FILE *f){
     tokens.token = num;
 }
 
-void readString(FILE *f){
+void cadena(FILE *f){
 	string str = "";
     char stringChar = lectura;
 	do{
@@ -321,7 +350,7 @@ void readString(FILE *f){
 
                 if(feof(f)){
                     tokens.tokenType = tokens.token = __FIN_PROGRAMA;
-                    error("string sin terminar.", ERROR_LEXICO);
+                    errorLex("string sin terminar.");
                     return;
                 }
                 break;
@@ -336,8 +365,7 @@ void readString(FILE *f){
 void expectativa(string tokEsperado, FILE* f){
 
     if (tokEsperado != tokens.tokenType)    {
-        error("error sintactico.", ERROR_SINTAX);
-        cout<<"Tengo: "<<tokens.tokenType<<"   Esperaba: "<<tokEsperado<<endl;
+        errorSintax("error sintactico.", tokEsperado);
     }
 
     cout<<linea<<"\t|\t"<<tokens.tokenType<<(tokens.tokenType != __PROCEDURE ? "\t\t" : "\t")<<tokens.token<<endl;
@@ -353,7 +381,7 @@ void parser(FILE* f){
     programa(f);
 }
 
-//programa = <bloque> + "."
+//programa = <bloque> "."
 void programa(FILE* f){
     bloque(f);
     expectativa(__PUNTO, f);
@@ -474,12 +502,12 @@ void proposicion(FILE* f){
             expectativa(__ESCRIBIR, f);
             expectativa(__PARENTESIS_L, f);
 
-            if (tokens.tokenType == __STRING)   cadena(f);
+            if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
             else    expresion(f);
 
             while(tokens.tokenType == __COMA){
                 expectativa(__COMA, f);
-                if (tokens.tokenType == __STRING)   cadena(f);
+                if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
                 else    expresion(f);
             }
 
@@ -493,12 +521,12 @@ void proposicion(FILE* f){
             if (tokens.tokenType == __PARENTESIS_L){
                 expectativa(__PARENTESIS_L, f);
 
-                if (tokens.tokenType == __STRING)   cadena(f);
+                if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
                 else    expresion(f);
 
                 while(tokens.tokenType == __COMA){
                     expectativa(__COMA, f);
-                    if (tokens.tokenType == __STRING)   cadena(f);
+                    if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
                     else    expresion(f);
                 }
 
@@ -559,20 +587,17 @@ void condicion(FILE* f){
     }
     else {
         expresion(f);
-        
+
         if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
              || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
             pedirLex(f);
         }
-        else error("comparador invalido.", ERROR_SINTAX);
+        else{
+            errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
+        }
 
         expresion(f);
     }
-}
-
-//cadena = "'" {az-AZ0_09} "'"
-void cadena(FILE* f){
-    expectativa(__STRING, f);
 }
 
 
