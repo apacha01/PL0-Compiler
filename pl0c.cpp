@@ -14,31 +14,6 @@
 using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//STRUCTS
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-typedef struct infoLectura
-{
-    string tokenType;
-    string token;
-} infoLectura;
-
-typedef struct tablaSimbolos
-{
-    string nombre;
-    string tipo;
-    int valor;
-    tablaSimbolos *sig;
-} tablaSimbolos;
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//VARIBALES GLOBALES
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static int linea = 0;		//para saber cuantas lineas tiene el codigo fuente
-static char lectura;		//donde se guardan los caracteres que se leen del archivo
-static infoLectura tokens;	//donde se guarda la info de lo que se lee
-static tablaSimbolos *base; //entrada de la tabla
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //CONSTANTES GLOBALES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define	__PUNTO      		"."
@@ -77,14 +52,48 @@ static tablaSimbolos *base; //entrada de la tabla
 #define	__COMILLA_SIMPLE	"'"
 #define	__COMILLA_DOBLE	    "\""
 #define	__FIN_PROGRAMA  	"EOF"
+#define __END_O_PC         "end' o ';"
+#define __COMA_O_PC         ",' o ';"
+#define __PAREN_O_C         ")' o ',"
+
+//PARA VERIFICACIONES SEMANTICAS Y TABLA DE SIMBOLOS
+#define LEFT    500
+#define RIGHT   501
+#define CALL    502
+#define MAX     256
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//STRUCTS
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+typedef struct infoLectura
+{
+    string tokenType;
+    string token;
+} infoLectura;
+
+struct tablaSimbolos
+{
+    string nombre;
+    string tipo;
+    int valor;
+};
+typedef tablaSimbolos arrSimbolos [MAX];
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//VARIBALES GLOBALES
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+static int linea = 0;		//para saber cuantas lineas tiene el codigo fuente
+static char lectura;		//donde se guardan los caracteres que se leen del archivo
+static infoLectura tokens;	//donde se guarda la info de lo que se lee
+static arrSimbolos simbTab; //tabla de simbolos
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //PROTOTIPOS DE FUNCIONES
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void error(string,int,string);	    // manejo de errores
+void error(string);         	    // manejo de errores
 void errorLex(string);              // manejo de errores lexicos
 void errorSintax(string, string);   //manejo de errores sintacticos
-void errorSemant(string,int);       //manejo de errores semanticos
+void errorSemant(string,string);    //manejo de errores semanticos
 FILE* readInputFile(string);	    // abre archivo y comprueba que todo este bien
 
 //LEXER
@@ -101,14 +110,19 @@ void parser(FILE*);                 // checkea la sintaxis del codigo
 void pedirLex(FILE*);               // le pide al lexer el siguiente token/palabra
 void expectativa(string,FILE*);     // checkea si el token es el esperado sintacticamente, error si no
 void programa(FILE*);               // procesa el grafo de programa del lenguaje
-void bloque(FILE*);                 // procesa el grafo de bloque del lenguaje
-void proposicion(FILE*);            // procesa el grafo de proposicion del lenguaje
-void condicion(FILE*);              // procesa el grafo de condicion del lenguaje
-void expresion(FILE*);              // procesa el grafo de expresion del lenguaje
-void termino(FILE*);                // procesa el grafo de termino del lenguaje
-void factor(FILE*);                 // procesa el grafo de factor del lenguaje
+void bloque(int*,int,FILE*);        // procesa el grafo de bloque del lenguaje
+void proposicion(FILE*,int,int);    // procesa el grafo de proposicion del lenguaje
+void condicion(FILE*,int,int);      // procesa el grafo de condicion del lenguaje
+void expresion(FILE*,int,int);      // procesa el grafo de expresion del lenguaje
+void termino(FILE*,int,int);        // procesa el grafo de termino del lenguaje
+void factor(FILE*,int,int);         // procesa el grafo de factor del lenguaje
 void cadena(FILE*);                 // procesa la lectura de cadenas
 
+//SEMANTICA (tabla de simbolos)
+void agregarSimbolo(string,int,int,int*);   // agrega el simbolo recivido a la tabla
+void verificarIdentificador(int,int,int);   // verifica, al hacer una asignacion, parte izquierda (deberia ser ident)
+                                            // parte derecha (no puede ser un procedure)
+                                            // y si al hacer un call se uso un procedure (tiene que)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -128,21 +142,18 @@ int main(int argc, char *argv[]){
     FILE *fuente;
     string filename = argv[1];
 
-    //var Listado: archivo
-    FILE *salida;
-
-    //var S: terminal;
-    //En el struct linea 18
-
-    //var Cad: str63;
-    //En el struct linea 18
-
-    //var NumLinea: integer
-    //variable global en la linea 23
-
     fuente = readInputFile(filename);
-
     if (fuente == NULL) exit(1);
+
+    /*
+        //var S: terminal;
+        //En el struct linea 18
+
+        //var Cad: str63;
+        //En el struct linea 18
+
+        //var NumLinea: integer
+        //variable global en la linea 23*/
 
     fetch(fuente);
 
@@ -154,6 +165,10 @@ int main(int argc, char *argv[]){
 
     cout<<"Todo termino en la linea: "<<linea<<endl;
 
+    cout<<"\n\n\n\tTABLA DE SIMBOLOS AL FINAL DEL PROGRAMA:\n"<<endl;
+    for(int i = 0; i <= 50; i++){
+        cout<<"\t\tNOMBRE:"<<simbTab[i].nombre<<"\t->\tTIPO:"<<simbTab[i].tipo<<"\t->\tVALOR:"<<simbTab[i].valor<<endl;
+    }
     return 0;
 }
 
@@ -181,15 +196,14 @@ void errorLex(string msj){
 
 void errorSintax(string msj, string tok){
     linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<(msj.find(".") ? " " : ". ");
-    cout<<"Se tiene el token: '"<<tokens.tokenType<<"' y se esperaba: '"<<tok<<"'";
+    cout<<"Se tiene el token: '"<<tokens.token<<"' y se esperaba: '"<<tok<<"'";
     cout<<endl<<endl;
     //en cuanto detecta un error se sale
     exit(1);
 }
 
-void errorSemant(string msj, int lor){
-    linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<(msj.find(".") ? " " : ". ");
-    cout<<""<<endl;
+void errorSemant(string msj, string token){
+    linea == 0 ? cout<<"Error: "<<msj<<endl : cout<<"Error en linea "<<linea<<": "<<msj<<token<<"'";
     cout<<endl<<endl;
     //en cuanto detecta un error se sale
     exit(1);
@@ -214,11 +228,15 @@ FILE* readInputFile(string filename){
 
 void fetch(FILE *f){
 	fread(&lectura, sizeof(char), 1, f);
-
+    //ASD ERROR PORQUE AL NO TERMINAR UNA STRING TIRA ESTE ERROR
     if (feof(f) && tokens.tokenType != __PUNTO){
         errorSintax("falta el punto ('.') final.", ".");
         exit(1);
     }
+}
+
+void fetchSTR(FILE *f){
+	fread(&lectura, sizeof(char), 1, f);
 }
 /*
 La tarea del analizador léxico consiste en:
@@ -260,7 +278,6 @@ void lexer(FILE *f){
         case '(':	tokens.tokenType = tokens.token = __PARENTESIS_L;     break;
         case ')':	tokens.tokenType = tokens.token = __PARENTESIS_R;     break;
         case ';':	tokens.tokenType = tokens.token = __PUNTO_COMA;       break;
-        case '"':                            //tokens.tokenType = tokens.token = __COMILLA_DOBLE;	break;
         case '\'':	cadena(f);   return; //tokens.tokenType = tokens.token = __COMILLA_SIMPLE;	break;
         case '>':
             fetch(f);
@@ -280,7 +297,7 @@ void lexer(FILE *f){
             if(lectura == '=') tokens.tokenType = tokens.token = __ASIGNACION;
             else errorLex("caracter inesperado despues del ':'.");
             break;
-        default: errorLex("al leer caracter."); break;
+        default: errorLex("al leer caracter desconocido."); break;
     }
 
     fetch(f);
@@ -325,35 +342,26 @@ void numero(FILE *f){
 
 void cadena(FILE *f){
 	string str = "";
-    char stringChar = lectura;
+
 	do{
         //entre con un ' o " asiq la salteo
-        fetch(f);
+        fetchSTR(f);
 
         //me encontre el final de string
-        if(lectura == stringChar) {
+        if(lectura == '\'') {
             tokens.tokenType = __STRING;
             tokens.token = str;
-            fetch(f);
+            fetchSTR(f);
             return;
         }
 
-        switch(stringChar){
-            case '\'':
-                //agrego \ para el uso de strings en cpp
-                if (lectura == '\"') str += "\\";
-            case '\"':
-                if(lectura == '\n') linea++;
+        if(lectura == '\n') linea++;
+        string lecturaString(1, lectura);
+        str += lecturaString;
 
-                string lecturaString(1, lectura);
-                str += lecturaString;
-
-                if(feof(f)){
-                    tokens.tokenType = tokens.token = __FIN_PROGRAMA;
-                    errorLex("string sin terminar.");
-                    return;
-                }
-                break;
+        if(feof(f)){
+            tokens.tokenType = tokens.token = __FIN_PROGRAMA;
+            error("string sin terminar.");
         }
 	}
 	while(lectura != '\'');
@@ -364,7 +372,7 @@ void cadena(FILE *f){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void expectativa(string tokEsperado, FILE* f){
 
-    if (tokEsperado != tokens.tokenType)    {
+    if (tokEsperado != tokens.tokenType){
         errorSintax("error sintactico.", tokEsperado);
     }
 
@@ -377,62 +385,98 @@ void pedirLex(FILE* f){
 }
 
 void parser(FILE* f){
-    //Primer token/palabra para analizar
     programa(f);
+}
+
+void incrementarDesplazamiento(int *des, int base){
+    (*des)++;
+    if((base+(*des)) >= MAX) error("se llego a la maxima cantidad de identificacores posibles.");
 }
 
 //programa = <bloque> "."
 void programa(FILE* f){
-    bloque(f);
+    int varDir = 0;
+    bloque(&varDir, 0, f);
     expectativa(__PUNTO, f);
 }
 
 //bloque = ["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
 //          |["var" <ident> ["," <ident>] ";"]
 //          |{"procedure" <ident> ";" <bloque>} <proposicion>
-void bloque(FILE* f){
+void bloque(int *varDir, int base, FILE* f){
+    int desplazamiento = 0;
 
     //["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
     if (tokens.tokenType == __CONSTANTE){
         expectativa(__CONSTANTE, f);
+
+        if(tokens.tokenType == __IDENT) agregarSimbolo(__CONSTANTE, base, desplazamiento, varDir);
         expectativa(__IDENT, f);
+        incrementarDesplazamiento(&desplazamiento,base);
+
         expectativa(__IGUAL, f);
+
+        if(tokens.tokenType == __NUMERO) agregarSimbolo(__NUMERO, base, desplazamiento, varDir);
         expectativa(__NUMERO, f);
 
         while(tokens.tokenType == __COMA){
             expectativa(__COMA, f);
+
+            if(tokens.tokenType == __IDENT) agregarSimbolo(__CONSTANTE, base, desplazamiento, varDir);
             expectativa(__IDENT, f);
+            incrementarDesplazamiento(&desplazamiento,base);
+
             expectativa(__IGUAL, f);
+
+            if(tokens.tokenType == __NUMERO) agregarSimbolo(__NUMERO, base, desplazamiento, varDir);
             expectativa(__NUMERO, f);
         }
 
-        expectativa(__PUNTO_COMA, f);
+        if(tokens.tokenType != __PUNTO_COMA) expectativa(__COMA_O_PC, f);
+        else expectativa(__PUNTO_COMA, f);
     }
 
     //["var" <ident> ["," <ident>] ";"]
     if (tokens.tokenType == __VARIABLE){
         expectativa(__VARIABLE, f);
+
+        if(tokens.tokenType == __IDENT){
+            agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
+            *varDir += 4;
+            incrementarDesplazamiento(&desplazamiento,base);
+        }
         expectativa(__IDENT, f);
+
         while(tokens.tokenType == __COMA){
             expectativa(__COMA, f);
+
+            if(tokens.tokenType == __IDENT){
+                agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
+                *varDir += 4;
+                incrementarDesplazamiento(&desplazamiento,base);
+            }
             expectativa(__IDENT, f);
         }
-        expectativa(__PUNTO_COMA, f);
+        if(tokens.tokenType != __PUNTO_COMA) expectativa(__COMA_O_PC, f);
+        else expectativa(__PUNTO_COMA, f);
     }
 
     //{"procedure" <ident> ";" <bloque> ";"}
     while (tokens.tokenType == __PROCEDURE){
         expectativa(__PROCEDURE, f);
+
+        if(tokens.tokenType == __IDENT) agregarSimbolo(__PROCEDURE, base, desplazamiento, varDir);
         expectativa(__IDENT, f);
+        incrementarDesplazamiento(&desplazamiento,base);
+
         expectativa(__PUNTO_COMA, f);
-        bloque(f);
+        bloque(varDir, base+desplazamiento, f);
         expectativa(__PUNTO_COMA, f);
     }
 
     //<proposicion>
-    proposicion(f);
+    proposicion(f, base, desplazamiento);
 }
-
 /*
 proposicion =   [<ident> ":=" <expresion>
             | "call" <ident>
@@ -443,58 +487,65 @@ proposicion =   [<ident> ":=" <expresion>
             | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
             | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
 */
-void proposicion(FILE* f){
+void proposicion(FILE* f, int base, int desplazamiento){
 
         //[<ident> ":=" <expresion>
         if (tokens.tokenType == __IDENT){
+            verificarIdentificador(LEFT, base, desplazamiento);
             expectativa(__IDENT, f);
             expectativa(__ASIGNACION, f);
-            expresion(f);
+            expresion(f, base, desplazamiento);
         }
 
         //| "call" <ident>
         else if (tokens.tokenType == __CALL){
             expectativa(__CALL, f);
+            if (tokens.tokenType == __IDENT) verificarIdentificador(CALL, base, desplazamiento);
             expectativa(__IDENT, f);
         }
 
         //| "begin" <proposicion> { ";" <proposicion> } "end"
         else if (tokens.tokenType == __BEGIN){
             expectativa(__BEGIN, f);
-            proposicion(f);
+            proposicion(f, base, desplazamiento);
             while(tokens.tokenType == __PUNTO_COMA){
                 expectativa(__PUNTO_COMA, f);
-                proposicion(f);
+                proposicion(f, base, desplazamiento);
             }
-            expectativa(__END, f);
+
+            if (tokens.tokenType != __END)  expectativa(__END_O_PC, f);
+            else expectativa(__END, f);
         }
 
         //| "if" <condicion> "then" <proposicion>
         else if (tokens.tokenType == __IF){
             expectativa(__IF, f);
-            condicion(f);
+            condicion(f, base, desplazamiento);
             expectativa(__THEN, f);
-            proposicion(f);
+            proposicion(f, base, desplazamiento);
         }
 
         //| "while" <condicion> "do" <proposicion>
         else if (tokens.tokenType == __WHILE){
             expectativa(__WHILE, f);
-            condicion(f);
+            condicion(f, base, desplazamiento);
             expectativa(__DO, f);
-            proposicion(f);
+            proposicion(f, base, desplazamiento);
         }
 
         //| "readln" "(" <ident> {"," <ident>} ")"
         else if (tokens.tokenType == __LEER_LN){
             expectativa(__LEER_LN, f);
             expectativa(__PARENTESIS_L, f);
+            if(tokens.tokenType == __IDENT) verificarIdentificador(LEFT, base, desplazamiento);
             expectativa(__IDENT, f);
             while(tokens.tokenType == __COMA){
                 expectativa(__COMA, f);
                 expectativa(__IDENT, f);
             }
-            expectativa(__PARENTESIS_R, f);
+
+            if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
+            else expectativa(__PARENTESIS_R, f);
         }
 
         //| "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
@@ -503,15 +554,16 @@ void proposicion(FILE* f){
             expectativa(__PARENTESIS_L, f);
 
             if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-            else    expresion(f);
+            else    expresion(f, base, desplazamiento);
 
             while(tokens.tokenType == __COMA){
                 expectativa(__COMA, f);
                 if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                else    expresion(f);
+                else    expresion(f, base, desplazamiento);
             }
 
-            expectativa(__PARENTESIS_R, f);
+            if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
+            else expectativa(__PARENTESIS_R, f);
         }
 
         //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
@@ -522,38 +574,39 @@ void proposicion(FILE* f){
                 expectativa(__PARENTESIS_L, f);
 
                 if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                else    expresion(f);
+                else    expresion(f, base, desplazamiento);
 
                 while(tokens.tokenType == __COMA){
                     expectativa(__COMA, f);
                     if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                    else    expresion(f);
+                    else    expresion(f, base, desplazamiento);
                 }
 
-                expectativa(__PARENTESIS_R, f);
+                if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
+                else expectativa(__PARENTESIS_R, f);
             }
         }
 }
 
 //expresion = ["+" | "-"] <termino> {("+" | "-") <termino>}
-void expresion(FILE* f){
+void expresion(FILE* f, int base, int desplazamiento){
     if (tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
         pedirLex(f);
     }
-    termino(f);
+    termino(f, base, desplazamiento);
 
     while(tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
         pedirLex(f);
-        termino(f);
+        termino(f, base, desplazamiento);
     }
 }
 
 //termino = <factor> {("*" | "/") <factor>}
-void termino(FILE* f){
-    factor(f);
+void termino(FILE* f, int base, int desplazamiento){
+    factor(f, base, desplazamiento);
     while(tokens.tokenType == __MULTIPLICACION || tokens.tokenType == __DIVISION){
         pedirLex(f);
-        factor(f);
+        factor(f, base, desplazamiento);
     }
 }
 
@@ -562,8 +615,9 @@ factor = <ident>
     |<numero>
     |"(" <expresion> ")"
 */
-void factor(FILE* f){
+void factor(FILE* f, int base, int desplazamiento){
     if (tokens.tokenType == __IDENT){
+        verificarIdentificador(RIGHT, base, desplazamiento);
         expectativa(__IDENT, f);
     }
     else if(tokens.tokenType == __NUMERO){
@@ -571,22 +625,23 @@ void factor(FILE* f){
     }
     else if (tokens.tokenType == __PARENTESIS_L){
         expectativa(__PARENTESIS_L, f);
-        expresion(f);
+        expresion(f, base, desplazamiento);
         expectativa(__PARENTESIS_R, f);
     }
+    else errorSintax("factor vacio.", "ident' o un numero o '(");
 }
 
 /*
 condicion = "odd" <expresion>
         |<expresion> ("=" | "<>" | "<" | "<=" | ">" | ">=") <expresion>
 */
-void condicion(FILE* f){
+void condicion(FILE* f, int base, int desplazamiento){
     if (tokens.tokenType == __ODD){
         expectativa(__ODD, f);
-        expresion(f);
+        expresion(f, base, desplazamiento);
     }
     else {
-        expresion(f);
+        expresion(f, base, desplazamiento);
 
         if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
              || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
@@ -596,17 +651,62 @@ void condicion(FILE* f){
             errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
         }
 
-        expresion(f);
+        expresion(f, base, desplazamiento);
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////SIMBOLS
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void agregarSimbolo(string tipo, int base, int desplazamiento, int* varDir){
+    int finTabla = base + desplazamiento;
 
+    if(tipo == __NUMERO){
+        simbTab[finTabla-1].valor = atoi((tokens.token).c_str());
+        if(simbTab[finTabla-1].tipo != __CONSTANTE) errorSemant("al asignar numero a const: '", simbTab[finTabla].nombre);
+        return;
+    }
 
+    for(int i = base; i <= finTabla; i++){
+        if(simbTab[i].nombre == tokens.token)   errorSemant("identificador repetido: '", tokens.token);
+    }
 
+    simbTab[finTabla].nombre = tokens.token;
+    simbTab[finTabla].tipo = tipo;
 
+    if(tipo == __CONSTANTE) simbTab[finTabla].valor = 0;
+    if(tipo == __VARIABLE)  simbTab[finTabla].valor = *varDir;
+    if(tipo == __PROCEDURE) simbTab[finTabla].valor = 0;
 
+}
 
+void verificarIdentificador(int lado, int base, int desplazamiento){
+    int finTabla = base + desplazamiento - 1;
+    int index = -1;
 
+    while(finTabla != -1){
+        if (tokens.token == simbTab[finTabla].nombre)  index = finTabla;
+        finTabla--;
+    }
+
+    if (index == -1)   errorSemant("simbolo indefinido: ", tokens.token);
+
+    switch(lado){
+        case LEFT:
+            if (simbTab[index].tipo == __PROCEDURE)
+            	errorSemant("falta palabra reservada 'call' antes de: '", simbTab[index].nombre);
+
+            if (simbTab[index].tipo != __VARIABLE)
+            	errorSemant("tiene que ser una variable: '", simbTab[index].nombre);
+            break;
+        case RIGHT:
+            if (simbTab[index].tipo == __PROCEDURE)  errorSemant("no puede ser un procedure: '", simbTab[index].nombre);
+            break;
+        case CALL:
+            if (simbTab[index].tipo != __PROCEDURE)  errorSemant("tiene que ser un procedure: '", simbTab[index].nombre);
+            break;
+    }
+}
 
 
 
