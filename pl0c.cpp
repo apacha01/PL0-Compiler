@@ -134,26 +134,11 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
-/*
-    procedure scanner (var Fuente, Listado: archivo; var S: terminal; var Cad: str63; var Restante: string;
-                        var NumLinea: integer);
-*/
-    //var Fuente: archivo
     FILE *fuente;
     string filename = argv[1];
 
     fuente = readInputFile(filename);
     if (fuente == NULL) exit(1);
-
-    /*
-        //var S: terminal;
-        //En el struct linea 18
-
-        //var Cad: str63;
-        //En el struct linea 18
-
-        //var NumLinea: integer
-        //variable global en la linea 23*/
 
     fetch(fuente);
 
@@ -228,7 +213,6 @@ FILE* readInputFile(string filename){
 
 void fetch(FILE *f){
 	fread(&lectura, sizeof(char), 1, f);
-    //ASD ERROR PORQUE AL NO TERMINAR UNA STRING TIRA ESTE ERROR
     if (feof(f) && tokens.tokenType != __PUNTO){
         errorSintax("falta el punto ('.') final.", ".");
         exit(1);
@@ -278,7 +262,7 @@ void lexer(FILE *f){
         case '(':	tokens.tokenType = tokens.token = __PARENTESIS_L;     break;
         case ')':	tokens.tokenType = tokens.token = __PARENTESIS_R;     break;
         case ';':	tokens.tokenType = tokens.token = __PUNTO_COMA;       break;
-        case '\'':	cadena(f);   return; //tokens.tokenType = tokens.token = __COMILLA_SIMPLE;	break;
+        case '\'':	cadena(f);   return;
         case '>':
             fetch(f);
             if(lectura == '=') tokens.tokenType = tokens.token = __MAYOR_IGUAL;
