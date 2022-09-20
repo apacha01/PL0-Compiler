@@ -110,7 +110,7 @@ void parser(FILE*);                 // checkea la sintaxis del codigo
 void pedirLex(FILE*);               // le pide al lexer el siguiente token/palabra
 void expectativa(string,FILE*);     // checkea si el token es el esperado sintacticamente, error si no
 void programa(FILE*);               // procesa el grafo de programa del lenguaje
-void bloque(int*,int,FILE*);        // procesa el grafo de bloque del lenguaje
+void bloque(FILE*,int&,int);        // procesa el grafo de bloque del lenguaje
 void proposicion(FILE*,int,int);    // procesa el grafo de proposicion del lenguaje
 void condicion(FILE*,int,int);      // procesa el grafo de condicion del lenguaje
 void expresion(FILE*,int,int);      // procesa el grafo de expresion del lenguaje
@@ -119,10 +119,11 @@ void factor(FILE*,int,int);         // procesa el grafo de factor del lenguaje
 void cadena(FILE*);                 // procesa la lectura de cadenas
 
 //SEMANTICA (tabla de simbolos)
-void agregarSimbolo(string,int,int,int*);   // agrega el simbolo recivido a la tabla
+void agregarSimbolo(string,int,int,int&);   // agrega el simbolo recivido a la tabla
 void verificarIdentificador(int,int,int);   // verifica, al hacer una asignacion, parte izquierda (deberia ser ident)
                                             // parte derecha (no puede ser un procedure)
                                             // y si al hacer un call se uso un procedure (tiene que)
+void incrementarDesplazamiento(int&,int);   // incrementa desplazamiento, error si se pasa del max
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -372,22 +373,22 @@ void parser(FILE* f){
     programa(f);
 }
 
-void incrementarDesplazamiento(int *des, int base){
-    (*des)++;
-    if((base+(*des)) >= MAX) error("se llego a la maxima cantidad de identificacores posibles.");
+void incrementarDesplazamiento(int &des, int base){
+    des++;
+    if((base+des) >= MAX) error("se llego a la maxima cantidad de identificacores posibles.");
 }
 
 //programa = <bloque> "."
 void programa(FILE* f){
     int varDir = 0;
-    bloque(&varDir, 0, f);
+    bloque(f, varDir, 0);
     expectativa(__PUNTO, f);
 }
 
 //bloque = ["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
 //          |["var" <ident> ["," <ident>] ";"]
 //          |{"procedure" <ident> ";" <bloque>} <proposicion>
-void bloque(int *varDir, int base, FILE* f){
+void bloque(FILE* f, int &varDir, int base){
     int desplazamiento = 0;
 
     //["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
@@ -396,7 +397,7 @@ void bloque(int *varDir, int base, FILE* f){
 
         if(tokens.tokenType == __IDENT) agregarSimbolo(__CONSTANTE, base, desplazamiento, varDir);
         expectativa(__IDENT, f);
-        incrementarDesplazamiento(&desplazamiento,base);
+        incrementarDesplazamiento(desplazamiento,base);
 
         expectativa(__IGUAL, f);
 
@@ -408,7 +409,7 @@ void bloque(int *varDir, int base, FILE* f){
 
             if(tokens.tokenType == __IDENT) agregarSimbolo(__CONSTANTE, base, desplazamiento, varDir);
             expectativa(__IDENT, f);
-            incrementarDesplazamiento(&desplazamiento,base);
+            incrementarDesplazamiento(desplazamiento,base);
 
             expectativa(__IGUAL, f);
 
@@ -426,8 +427,8 @@ void bloque(int *varDir, int base, FILE* f){
 
         if(tokens.tokenType == __IDENT){
             agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
-            *varDir += 4;
-            incrementarDesplazamiento(&desplazamiento,base);
+            varDir += 4;
+            incrementarDesplazamiento(desplazamiento,base);
         }
         expectativa(__IDENT, f);
 
@@ -436,8 +437,8 @@ void bloque(int *varDir, int base, FILE* f){
 
             if(tokens.tokenType == __IDENT){
                 agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
-                *varDir += 4;
-                incrementarDesplazamiento(&desplazamiento,base);
+                varDir += 4;
+                incrementarDesplazamiento(desplazamiento,base);
             }
             expectativa(__IDENT, f);
         }
@@ -451,10 +452,10 @@ void bloque(int *varDir, int base, FILE* f){
 
         if(tokens.tokenType == __IDENT) agregarSimbolo(__PROCEDURE, base, desplazamiento, varDir);
         expectativa(__IDENT, f);
-        incrementarDesplazamiento(&desplazamiento,base);
+        incrementarDesplazamiento(desplazamiento,base);
 
         expectativa(__PUNTO_COMA, f);
-        bloque(varDir, base+desplazamiento, f);
+        bloque(f, varDir, base+desplazamiento);
         expectativa(__PUNTO_COMA, f);
     }
 
@@ -642,7 +643,7 @@ void condicion(FILE* f, int base, int desplazamiento){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////SIMBOLS
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void agregarSimbolo(string tipo, int base, int desplazamiento, int* varDir){
+void agregarSimbolo(string tipo, int base, int desplazamiento, int &varDir){
     int finTabla = base + desplazamiento;
 
     if(tipo == __NUMERO){
@@ -659,7 +660,7 @@ void agregarSimbolo(string tipo, int base, int desplazamiento, int* varDir){
     simbTab[finTabla].tipo = tipo;
 
     if(tipo == __CONSTANTE) simbTab[finTabla].valor = 0;
-    if(tipo == __VARIABLE)  simbTab[finTabla].valor = *varDir;
+    if(tipo == __VARIABLE)  simbTab[finTabla].valor = varDir;
     if(tipo == __PROCEDURE) simbTab[finTabla].valor = 0;
 
 }
