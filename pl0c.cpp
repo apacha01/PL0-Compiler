@@ -152,9 +152,9 @@ int main(int argc, char *argv[]){
     cout<<"Todo termino en la linea: "<<linea<<endl;
 
     cout<<"\n\n\n\tTABLA DE SIMBOLOS AL FINAL DEL PROGRAMA:\n"<<endl;
-    for(int i = 0; i <= 50; i++){
+    for(int i = 0; i <= 15; i++)
         cout<<"\t\tNOMBRE:"<<simbTab[i].nombre<<"\t->\tTIPO:"<<simbTab[i].tipo<<"\t->\tVALOR:"<<simbTab[i].valor<<endl;
-    }
+    
     return 0;
 }
 
@@ -297,17 +297,21 @@ void ident(FILE *f){
         fetch(f);
     }
 
+    string palabraNormal = palabra;
+
     //paso todo a minus
     for (int i = 0; i < palabra.length(); i++) palabra[i] = tolower(palabra[i]);
 
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
-    	palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
-    	palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
-    	palabra == __LEER_LN)
-            tokens.tokenType = tokens.token = palabra;
+        palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
+        palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
+        palabra == __LEER_LN){
+            tokens.tokenType = palabra;
+            tokens.token = palabraNormal;
+    }
     else{
         tokens.tokenType = __IDENT;
-        tokens.token = palabra;
+        tokens.token = palabraNormal;
     }
 }
 
