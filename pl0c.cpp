@@ -455,6 +455,10 @@ void programa(FILE* f){
 //          |{"procedure" <ident> ";" <bloque>} <proposicion>
 void bloque(FILE* f, int &indMem, int &varDir, int base){
     int desplazamiento = 0;
+    int indMemProcedureArreglar = 0;
+
+    opJMP(indMem, 0x00);
+    indMemProcedureArreglar = indMem;
 
     //["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
     if (tokens.tokenType == __CONSTANTE){
@@ -523,6 +527,10 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
         bloque(f, indMem, varDir, base+desplazamiento);
         expectativa(__PUNTO_COMA, f);
     }
+
+    //GENERACION DE CODIGO//=============================================================
+    arreglarMem4bytes(indMemProcedureArreglar - 4, indMem - indMemProcedureArreglar);
+    //===================================================================================
 
     //<proposicion>
     proposicion(f, indMem, base, desplazamiento);
