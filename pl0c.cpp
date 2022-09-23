@@ -63,6 +63,13 @@ using namespace std;
 #define CALL    502
 #define MAX     256
 
+//DIRECCIONES DE MEMORIA DONDE ESTAN RUTINAS E/S
+#define IO_MOSTRAR_STRING       0x03E0  // muestra por consola una cadena terminada en 0, alojada en la dir guardada en EAX.
+#define IO_SALTO_LINEA_CONSOLA  0x0410  // envía un salto de línea a la consola.
+#define IO_MOSTRAR_EAX_CONSOLA  0x0420  // muestra por consola el número entero contenido en EAX.
+#define IO_FINALIZA_PROGRAMA    0x0588  // finaliza el programa
+#define IO_LECTURA_TECLADO      0x0590  // lee por consola un número entero y lo deja guardado en EAX.
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //STRUCTS
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -616,10 +623,32 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     else if (tokens.tokenType == __LEER_LN){
         expectativa(__LEER_LN, f);
         expectativa(__PARENTESIS_L, f);
-        if(tokens.tokenType == __IDENT) verificarIdentificador(LEFT, base, desplazamiento);
+
+        if(tokens.tokenType == __IDENT) {
+            verificarIdentificador(LEFT, base, desplazamiento);
+            identValor = getSymbolValue(tokens.token,base,desplazamiento);
+
+            //GENERACION DE CODIGO//========================
+            opCALL(indMem, IO_LECTURA_TECLADO - indMem);
+            opMoveEDI_EAX(indMem, identValor);
+            //==============================================
+        }
+
         expectativa(__IDENT, f);
+
         while(tokens.tokenType == __COMA){
             expectativa(__COMA, f);
+
+            if(tokens.tokenType == __IDENT) {
+                verificarIdentificador(LEFT, base, desplazamiento);
+                identValor = getSymbolValue(tokens.token,base,desplazamiento);
+
+                //GENERACION DE CODIGO//========================
+                opCALL(indMem, IO_LECTURA_TECLADO - indMem);
+                opMoveEDI_EAX(indMem, identValor);
+                //==============================================
+            }
+
             expectativa(__IDENT, f);
         }
 
