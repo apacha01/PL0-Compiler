@@ -529,69 +529,97 @@ proposicion =   [<ident> ":=" <expresion>
             | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
 */
 void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
+    int identValor = 0;
 
-        //[<ident> ":=" <expresion>
-        if (tokens.tokenType == __IDENT){
-            verificarIdentificador(LEFT, base, desplazamiento);
-            expectativa(__IDENT, f);
-            expectativa(__ASIGNACION, f);
-            expresion(f, indMem, base, desplazamiento);
-        }
+    //[<ident> ":=" <expresion>
+    if (tokens.tokenType == __IDENT){
+        if((identValor = getSymbolValue(tokens.token, base, desplazamiento)) == -1)
+            error("al buscar valor de variable.");
+        verificarIdentificador(LEFT, base, desplazamiento);
+        expectativa(__IDENT, f);
+        expectativa(__ASIGNACION, f);
+        expresion(f, indMem, base, desplazamiento);
 
-        //| "call" <ident>
-        else if (tokens.tokenType == __CALL){
-            expectativa(__CALL, f);
-            if (tokens.tokenType == __IDENT) verificarIdentificador(CALL, base, desplazamiento);
-            expectativa(__IDENT, f);
-        }
+        //GENERACION DE CODIGO//=============
+        opPopEAX(indMem);
+        opMoveEDI_EAX(indMem, identValor);
+        //===================================
+    }
 
-        //| "begin" <proposicion> { ";" <proposicion> } "end"
-        else if (tokens.tokenType == __BEGIN){
-            expectativa(__BEGIN, f);
-            proposicion(f, indMem, base, desplazamiento);
-            while(tokens.tokenType == __PUNTO_COMA){
-                expectativa(__PUNTO_COMA, f);
-                proposicion(f, indMem, base, desplazamiento);
-            }
+    //| "call" <ident>
+    else if (tokens.tokenType == __CALL){
+        expectativa(__CALL, f);
+        if (tokens.tokenType == __IDENT) verificarIdentificador(CALL, base, desplazamiento);
+        expectativa(__IDENT, f);
+    }
 
-            if (tokens.tokenType != __END)  expectativa(__END_O_PC, f);
-            else expectativa(__END, f);
-        }
-
-        //| "if" <condicion> "then" <proposicion>
-        else if (tokens.tokenType == __IF){
-            expectativa(__IF, f);
-            condicion(f, indMem, base, desplazamiento);
-            expectativa(__THEN, f);
+    //| "begin" <proposicion> { ";" <proposicion> } "end"
+    else if (tokens.tokenType == __BEGIN){
+        expectativa(__BEGIN, f);
+        proposicion(f, indMem, base, desplazamiento);
+        while(tokens.tokenType == __PUNTO_COMA){
+            expectativa(__PUNTO_COMA, f);
             proposicion(f, indMem, base, desplazamiento);
         }
 
-        //| "while" <condicion> "do" <proposicion>
-        else if (tokens.tokenType == __WHILE){
-            expectativa(__WHILE, f);
-            condicion(f, indMem, base, desplazamiento);
-            expectativa(__DO, f);
-            proposicion(f, indMem, base, desplazamiento);
-        }
+        if (tokens.tokenType != __END)  expectativa(__END_O_PC, f);
+        else expectativa(__END, f);
+    }
 
-        //| "readln" "(" <ident> {"," <ident>} ")"
-        else if (tokens.tokenType == __LEER_LN){
-            expectativa(__LEER_LN, f);
-            expectativa(__PARENTESIS_L, f);
-            if(tokens.tokenType == __IDENT) verificarIdentificador(LEFT, base, desplazamiento);
+    //| "if" <condicion> "then" <proposicion>
+    else if (tokens.tokenType == __IF){
+        expectativa(__IF, f);
+        condicion(f, indMem, base, desplazamiento);
+        expectativa(__THEN, f);
+        proposicion(f, indMem, base, desplazamiento);
+    }
+
+    //| "while" <condicion> "do" <proposicion>
+    else if (tokens.tokenType == __WHILE){
+        expectativa(__WHILE, f);
+        condicion(f, indMem, base, desplazamiento);
+        expectativa(__DO, f);
+        proposicion(f, indMem, base, desplazamiento);
+    }
+
+    //| "readln" "(" <ident> {"," <ident>} ")"
+    else if (tokens.tokenType == __LEER_LN){
+        expectativa(__LEER_LN, f);
+        expectativa(__PARENTESIS_L, f);
+        if(tokens.tokenType == __IDENT) verificarIdentificador(LEFT, base, desplazamiento);
+        expectativa(__IDENT, f);
+        while(tokens.tokenType == __COMA){
+            expectativa(__COMA, f);
             expectativa(__IDENT, f);
-            while(tokens.tokenType == __COMA){
-                expectativa(__COMA, f);
-                expectativa(__IDENT, f);
-            }
-
-            if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
-            else expectativa(__PARENTESIS_R, f);
         }
 
-        //| "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
-        else if (tokens.tokenType == __ESCRIBIR){
-            expectativa(__ESCRIBIR, f);
+        if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
+        else expectativa(__PARENTESIS_R, f);
+    }
+
+    //| "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
+    else if (tokens.tokenType == __ESCRIBIR){
+        expectativa(__ESCRIBIR, f);
+        expectativa(__PARENTESIS_L, f);
+
+        if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
+        else    expresion(f, indMem, base, desplazamiento);
+
+        while(tokens.tokenType == __COMA){
+            expectativa(__COMA, f);
+            if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
+            else    expresion(f, indMem, base, desplazamiento);
+        }
+
+        if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
+        else expectativa(__PARENTESIS_R, f);
+    }
+
+    //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+    else if (tokens.tokenType == __ESCRIBIR_LN){
+        expectativa(__ESCRIBIR_LN, f);
+
+        if (tokens.tokenType == __PARENTESIS_L){
             expectativa(__PARENTESIS_L, f);
 
             if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
@@ -606,27 +634,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
             else expectativa(__PARENTESIS_R, f);
         }
-
-        //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
-        else if (tokens.tokenType == __ESCRIBIR_LN){
-            expectativa(__ESCRIBIR_LN, f);
-
-            if (tokens.tokenType == __PARENTESIS_L){
-                expectativa(__PARENTESIS_L, f);
-
-                if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                else    expresion(f, indMem, base, desplazamiento);
-
-                while(tokens.tokenType == __COMA){
-                    expectativa(__COMA, f);
-                    if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                    else    expresion(f, indMem, base, desplazamiento);
-                }
-
-                if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
-                else expectativa(__PARENTESIS_R, f);
-            }
-        }
+    }
 }
 
 /*
