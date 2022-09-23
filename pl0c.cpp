@@ -132,7 +132,7 @@ void agregarSimbolo(string,int,int,int&);   // agrega el simbolo recivido a la t
 void verificarIdentificador(int,int,int);   // verifica, al hacer una asignacion, parte izquierda (deberia ser ident)
                                             // parte derecha (no puede ser un procedure)
                                             // y si al hacer un call se uso un procedure (tiene que)
-void incrementarDesplazamiento(int&,int);   // incrementa desplazamiento, error si se pasa del max
+void incDesplazamiento(int&,int);           // incrementa desplazamiento, error si se pasa del max
 
 //GENERADOR DE CODIGO
 void cgInit();                          // inicializa las primeras pos. de memoria que siempre van a ser igual
@@ -436,7 +436,7 @@ void parser(FILE* f){
     programa(f);
 }
 
-void incrementarDesplazamiento(int &des, int base){
+void incDesplazamiento(int &des, int base){
     des++;
     if((base+des) >= MAX) error("se llego a la maxima cantidad de identificacores posibles.");
 }
@@ -466,7 +466,7 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
 
         if(tokens.tokenType == __IDENT) agregarSimbolo(__CONSTANTE, base, desplazamiento, varDir);
         expectativa(__IDENT, f);
-        incrementarDesplazamiento(desplazamiento,base);
+        incDesplazamiento(desplazamiento,base);
 
         expectativa(__IGUAL, f);
 
@@ -478,7 +478,7 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
 
             if(tokens.tokenType == __IDENT) agregarSimbolo(__CONSTANTE, base, desplazamiento, varDir);
             expectativa(__IDENT, f);
-            incrementarDesplazamiento(desplazamiento,base);
+            incDesplazamiento(desplazamiento,base);
 
             expectativa(__IGUAL, f);
 
@@ -497,7 +497,7 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
         if(tokens.tokenType == __IDENT){
             agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
             varDir += 4;
-            incrementarDesplazamiento(desplazamiento,base);
+            incDesplazamiento(desplazamiento,base);
         }
         expectativa(__IDENT, f);
 
@@ -507,7 +507,7 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
             if(tokens.tokenType == __IDENT){
                 agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
                 varDir += 4;
-                incrementarDesplazamiento(desplazamiento,base);
+                incDesplazamiento(desplazamiento,base);
             }
             expectativa(__IDENT, f);
         }
@@ -521,11 +521,15 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
 
         if(tokens.tokenType == __IDENT) agregarSimbolo(__PROCEDURE, base, desplazamiento, indMem);
         expectativa(__IDENT, f);
-        incrementarDesplazamiento(desplazamiento,base);
+        incDesplazamiento(desplazamiento,base);
 
         expectativa(__PUNTO_COMA, f);
         bloque(f, indMem, varDir, base+desplazamiento);
         expectativa(__PUNTO_COMA, f);
+
+        //GENERACION DE CODIGO
+        opRET(indMem);
+        //====================
     }
 
     //GENERACION DE CODIGO//=============================================================
