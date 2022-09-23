@@ -109,17 +109,16 @@ void cadena(FILE*);		    // si se lee un ' se toma como inicio de string
 //PARSER
 //R2. Declarar para cada grafo un procedimiento que contenga las sentencias resultantes de aplicarle al
 //grafo las reglas R3 a R7.
-void parser(FILE*);                 // checkea la sintaxis del codigo
-void pedirLex(FILE*);               // le pide al lexer el siguiente token/palabra
-void expectativa(string,FILE*);     // checkea si el token es el esperado sintacticamente, error si no
-void programa(FILE*);               // procesa el grafo de programa del lenguaje
-void bloque(FILE*,int&,int);        // procesa el grafo de bloque del lenguaje
-void proposicion(FILE*,int,int);    // procesa el grafo de proposicion del lenguaje
-void condicion(FILE*,int,int);      // procesa el grafo de condicion del lenguaje
-void expresion(FILE*,int,int);      // procesa el grafo de expresion del lenguaje
-void termino(FILE*,int,int);        // procesa el grafo de termino del lenguaje
-void factor(FILE*,int,int);         // procesa el grafo de factor del lenguaje
-void cadena(FILE*);                 // procesa la lectura de cadenas
+void parser(FILE*);                     // checkea la sintaxis del codigo
+void pedirLex(FILE*);                   // le pide al lexer el siguiente token/palabra
+void expectativa(string,FILE*);         // checkea si el token es el esperado sintacticamente, error si no
+void programa(FILE*);                   // procesa el grafo de programa del lenguaje
+void bloque(FILE*,int&,int&,int);       // procesa el grafo de bloque del lenguaje
+void proposicion(FILE*,int&,int,int);   // procesa el grafo de proposicion del lenguaje
+void condicion(FILE*,int&,int,int);     // procesa el grafo de condicion del lenguaje
+void expresion(FILE*,int&,int,int);     // procesa el grafo de expresion del lenguaje
+void termino(FILE*,int&,int,int);       // procesa el grafo de termino del lenguaje
+void factor(FILE*,int&,int,int);        // procesa el grafo de factor del lenguaje
 
 //SEMANTICA (tabla de simbolos)
 void agregarSimbolo(string,int,int,int&);   // agrega el simbolo recivido a la tabla
@@ -433,14 +432,16 @@ void incrementarDesplazamiento(int &des, int base){
 //programa = <bloque> "."
 void programa(FILE* f){
     int varDir = 0;
-    bloque(f, varDir, 0);
+    int indiceMemoria = 1797;
+
+    bloque(f, indiceMemoria, varDir, 0);
     expectativa(__PUNTO, f);
 }
 
 //bloque = ["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
 //          |["var" <ident> ["," <ident>] ";"]
 //          |{"procedure" <ident> ";" <bloque>} <proposicion>
-void bloque(FILE* f, int &varDir, int base){
+void bloque(FILE* f, int &indMem, int &varDir, int base){
     int desplazamiento = 0;
 
     //["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
@@ -507,12 +508,12 @@ void bloque(FILE* f, int &varDir, int base){
         incrementarDesplazamiento(desplazamiento,base);
 
         expectativa(__PUNTO_COMA, f);
-        bloque(f, varDir, base+desplazamiento);
+        bloque(f, indMem, varDir, base+desplazamiento);
         expectativa(__PUNTO_COMA, f);
     }
 
     //<proposicion>
-    proposicion(f, base, desplazamiento);
+    proposicion(f, indMem, base, desplazamiento);
 }
 /*
 proposicion =   [<ident> ":=" <expresion>
@@ -524,14 +525,14 @@ proposicion =   [<ident> ":=" <expresion>
             | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
             | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
 */
-void proposicion(FILE* f, int base, int desplazamiento){
+void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
 
         //[<ident> ":=" <expresion>
         if (tokens.tokenType == __IDENT){
             verificarIdentificador(LEFT, base, desplazamiento);
             expectativa(__IDENT, f);
             expectativa(__ASIGNACION, f);
-            expresion(f, base, desplazamiento);
+            expresion(f, indMem, base, desplazamiento);
         }
 
         //| "call" <ident>
@@ -544,10 +545,10 @@ void proposicion(FILE* f, int base, int desplazamiento){
         //| "begin" <proposicion> { ";" <proposicion> } "end"
         else if (tokens.tokenType == __BEGIN){
             expectativa(__BEGIN, f);
-            proposicion(f, base, desplazamiento);
+            proposicion(f, indMem, base, desplazamiento);
             while(tokens.tokenType == __PUNTO_COMA){
                 expectativa(__PUNTO_COMA, f);
-                proposicion(f, base, desplazamiento);
+                proposicion(f, indMem, base, desplazamiento);
             }
 
             if (tokens.tokenType != __END)  expectativa(__END_O_PC, f);
@@ -557,17 +558,17 @@ void proposicion(FILE* f, int base, int desplazamiento){
         //| "if" <condicion> "then" <proposicion>
         else if (tokens.tokenType == __IF){
             expectativa(__IF, f);
-            condicion(f, base, desplazamiento);
+            condicion(f, indMem, base, desplazamiento);
             expectativa(__THEN, f);
-            proposicion(f, base, desplazamiento);
+            proposicion(f, indMem, base, desplazamiento);
         }
 
         //| "while" <condicion> "do" <proposicion>
         else if (tokens.tokenType == __WHILE){
             expectativa(__WHILE, f);
-            condicion(f, base, desplazamiento);
+            condicion(f, indMem, base, desplazamiento);
             expectativa(__DO, f);
-            proposicion(f, base, desplazamiento);
+            proposicion(f, indMem, base, desplazamiento);
         }
 
         //| "readln" "(" <ident> {"," <ident>} ")"
@@ -591,12 +592,12 @@ void proposicion(FILE* f, int base, int desplazamiento){
             expectativa(__PARENTESIS_L, f);
 
             if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-            else    expresion(f, base, desplazamiento);
+            else    expresion(f, indMem, base, desplazamiento);
 
             while(tokens.tokenType == __COMA){
                 expectativa(__COMA, f);
                 if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                else    expresion(f, base, desplazamiento);
+                else    expresion(f, indMem, base, desplazamiento);
             }
 
             if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
@@ -611,12 +612,12 @@ void proposicion(FILE* f, int base, int desplazamiento){
                 expectativa(__PARENTESIS_L, f);
 
                 if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                else    expresion(f, base, desplazamiento);
+                else    expresion(f, indMem, base, desplazamiento);
 
                 while(tokens.tokenType == __COMA){
                     expectativa(__COMA, f);
                     if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                    else    expresion(f, base, desplazamiento);
+                    else    expresion(f, indMem, base, desplazamiento);
                 }
 
                 if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
@@ -629,13 +630,13 @@ void proposicion(FILE* f, int base, int desplazamiento){
 condicion = "odd" <expresion>
         |<expresion> ("=" | "<>" | "<" | "<=" | ">" | ">=") <expresion>
 */
-void condicion(FILE* f, int base, int desplazamiento){
+void condicion(FILE* f, int &indMem, int base, int desplazamiento){
     if (tokens.tokenType == __ODD){
         expectativa(__ODD, f);
-        expresion(f, base, desplazamiento);
+        expresion(f, indMem, base, desplazamiento);
     }
     else {
-        expresion(f, base, desplazamiento);
+        expresion(f, indMem, base, desplazamiento);
 
         if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
              || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
@@ -645,29 +646,29 @@ void condicion(FILE* f, int base, int desplazamiento){
             errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
         }
 
-        expresion(f, base, desplazamiento);
+        expresion(f, indMem, base, desplazamiento);
     }
 }
 
 //expresion = ["+" | "-"] <termino> {("+" | "-") <termino>}
-void expresion(FILE* f, int base, int desplazamiento){
+void expresion(FILE* f, int &indMem, int base, int desplazamiento){
     if (tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
         pedirLex(f);
     }
-    termino(f, base, desplazamiento);
+    termino(f, indMem, base, desplazamiento);
 
     while(tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
         pedirLex(f);
-        termino(f, base, desplazamiento);
+        termino(f, indMem, base, desplazamiento);
     }
 }
 
 //termino = <factor> {("*" | "/") <factor>}
-void termino(FILE* f, int base, int desplazamiento){
-    factor(f, base, desplazamiento);
+void termino(FILE* f, int &indMem, int base, int desplazamiento){
+    factor(f, indMem, base, desplazamiento);
     while(tokens.tokenType == __MULTIPLICACION || tokens.tokenType == __DIVISION){
         pedirLex(f);
-        factor(f, base, desplazamiento);
+        factor(f, indMem, base, desplazamiento);
     }
 }
 
@@ -676,7 +677,7 @@ factor = <ident>
     |<numero>
     |"(" <expresion> ")"
 */
-void factor(FILE* f, int base, int desplazamiento){
+void factor(FILE* f, int &indMem, int base, int desplazamiento){
     if (tokens.tokenType == __IDENT){
         verificarIdentificador(RIGHT, base, desplazamiento);
         expectativa(__IDENT, f);
@@ -686,10 +687,10 @@ void factor(FILE* f, int base, int desplazamiento){
     }
     else if (tokens.tokenType == __PARENTESIS_L){
         expectativa(__PARENTESIS_L, f);
-        expresion(f, base, desplazamiento);
+        expresion(f, indMem, base, desplazamiento);
         expectativa(__PARENTESIS_R, f);
     }
-    else errorSintax("factor vacio.", "ident' o un numero o '(");
+    else errorSintax("factor vacio.", "ident', un numero o '(");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
