@@ -625,6 +625,30 @@ void proposicion(FILE* f, int base, int desplazamiento){
         }
 }
 
+/*
+condicion = "odd" <expresion>
+        |<expresion> ("=" | "<>" | "<" | "<=" | ">" | ">=") <expresion>
+*/
+void condicion(FILE* f, int base, int desplazamiento){
+    if (tokens.tokenType == __ODD){
+        expectativa(__ODD, f);
+        expresion(f, base, desplazamiento);
+    }
+    else {
+        expresion(f, base, desplazamiento);
+
+        if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
+             || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
+            pedirLex(f);
+        }
+        else{
+            errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
+        }
+
+        expresion(f, base, desplazamiento);
+    }
+}
+
 //expresion = ["+" | "-"] <termino> {("+" | "-") <termino>}
 void expresion(FILE* f, int base, int desplazamiento){
     if (tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
@@ -666,30 +690,6 @@ void factor(FILE* f, int base, int desplazamiento){
         expectativa(__PARENTESIS_R, f);
     }
     else errorSintax("factor vacio.", "ident' o un numero o '(");
-}
-
-/*
-condicion = "odd" <expresion>
-        |<expresion> ("=" | "<>" | "<" | "<=" | ">" | ">=") <expresion>
-*/
-void condicion(FILE* f, int base, int desplazamiento){
-    if (tokens.tokenType == __ODD){
-        expectativa(__ODD, f);
-        expresion(f, base, desplazamiento);
-    }
-    else {
-        expresion(f, base, desplazamiento);
-
-        if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
-             || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
-            pedirLex(f);
-        }
-        else{
-            errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
-        }
-
-        expresion(f, base, desplazamiento);
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
