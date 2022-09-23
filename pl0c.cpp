@@ -637,19 +637,42 @@ void condicion(FILE* f, int &indMem, int base, int desplazamiento){
     if (tokens.tokenType == __ODD){
         expectativa(__ODD, f);
         expresion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//===
+        opPopEAX(indMem);
+        opTEST(indMem, 0x01);           // x & 1
+        opJPO(indMem);
+        opJMP(indMem, 0x00);            //dsps se arregla, no se sabe la direccion en este momento
+        //=========================
     }
     else {
+        string comparador;
+
         expresion(f, indMem, base, desplazamiento);
 
         if (tokens.tokenType == __IGUAL || tokens.tokenType == __DISTINTO || tokens.tokenType == __MENOR
              || tokens.tokenType == __MENOR_IGUAL || tokens.tokenType == __MAYOR || tokens.tokenType == __MAYOR_IGUAL){
+            comparador = tokens.tokenType;
             pedirLex(f);
         }
-        else{
-            errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
-        }
+        else    errorSintax("comparador invalido.", "\"=\", \"<>\", \"<\", \"<=\", \">\" o \">=\".");
 
         expresion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//==========================================
+        opPopEAX(indMem);
+        opPopEBX(indMem);
+        opCMP(indMem);
+
+        if (comparador == __IGUAL)              opJE(indMem);
+        else if (comparador == __DISTINTO)      opJNE(indMem);
+        else if (comparador == __MENOR)         opJL(indMem);
+        else if (comparador == __MENOR_IGUAL)   opJLE(indMem);
+        else if (comparador == __MAYOR)         opJG(indMem);
+        else if (comparador == __MAYOR_IGUAL)   opJGE(indMem);
+
+        opJMP(indMem,0x00);
+        //================================================================
     }
 }
 
