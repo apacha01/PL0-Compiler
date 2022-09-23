@@ -120,7 +120,7 @@ void parser(FILE*);                     // checkea la sintaxis del codigo
 void pedirLex(FILE*);                   // le pide al lexer el siguiente token/palabra
 void expectativa(string,FILE*);         // checkea si el token es el esperado sintacticamente, error si no
 void programa(FILE*);                   // procesa el grafo de programa del lenguaje
-void bloque(FILE*,int&,int&,int);       // procesa el grafo de bloque del lenguaje
+int bloque(FILE*,int&,int&,int);       // procesa el grafo de bloque del lenguaje
 void proposicion(FILE*,int&,int,int);   // procesa el grafo de proposicion del lenguaje
 void condicion(FILE*,int&,int,int);     // procesa el grafo de condicion del lenguaje
 void expresion(FILE*,int&,int,int);     // procesa el grafo de expresion del lenguaje
@@ -445,15 +445,48 @@ void incDesplazamiento(int &des, int base){
 void programa(FILE* f){
     int varDir = 0;
     int indiceMemoria = 1797;
+    int cantVar = 0;
 
-    bloque(f, indiceMemoria, varDir, 0);
+    cantVar = bloque(f, indiceMemoria, varDir, 0);
     expectativa(__PUNTO, f);
+
+    //GENERACION DE CODIGO//=======================================================================
+    opJMP(indiceMemoria, IO_FINALIZA_PROGRAMA - indiceMemoria); // salto a rutina de e/s que finaliza el programa
+
+    int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
+    int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
+
+    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria);    // arreglo direccion de la tabla de simbolos
+
+    for (int i = 0; i < cantVar; i++)                           // pongo 4 0's por variable en el programa
+        mem0(indiceMemoria, 4);
+
+    arreglarMem4bytes(416, indiceMemoria);                      // arreglo VirtualSize con el tamaño actual de text section
+    
+    int fileAlignment = byte4toint(memoria[223], memoria[222], memoria[221], memoria[220]);
+    while((indiceMemoria % fileAlignment) != 0)
+        mem0(indiceMemoria, 1);                                 // inserto 0's para q tamaño sea multiplo de FileAlignment
+    
+    arreglarMem4bytes(188, indiceMemoria);                      // ajusto SizeOfCodeSection con el tamaño de text
+    arreglarMem4bytes(424, indiceMemoria);                      // ajusto SizeOfRawData con el tamaño de text
+
+    int SizeOfCodeSection = byte4toint(memoria[191], memoria[190], memoria[189], memoria[188]);
+    int SizeOfRawData = byte4toint(memoria[427], memoria[426], memoria[425], memoria[424]);
+    int SectionAlignment = byte4toint(memoria[219], memoria[218], memoria[217], memoria[216]);
+    //SizeOfImage (240) =
+    //  (2 + SizeOfCodeSection / SectionAlignment) * SectionAlignment
+    arreglarMem4bytes(240, ((2 + SizeOfCodeSection / SectionAlignment) * SectionAlignment));
+
+    //BaseOfData (208) =
+    //  (2 + SizeOfRawData / SectionAlignment) * SectionAlignment
+    arreglarMem4bytes(208, ((2 + SizeOfRawData / SectionAlignment) * SectionAlignment));
+    //=============================================================================================
 }
 
 //bloque = ["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
 //          |["var" <ident> ["," <ident>] ";"]
 //          |{"procedure" <ident> ";" <bloque>} <proposicion>
-void bloque(FILE* f, int &indMem, int &varDir, int base){
+int bloque(FILE* f, int &indMem, int &varDir, int base){
     int desplazamiento = 0;
     int indMemProcedureArreglar = 0;
 
@@ -538,6 +571,8 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
 
     //<proposicion>
     proposicion(f, indMem, base, desplazamiento);
+
+    return (base + desplazamiento);
 }
 /*
 proposicion =   [<ident> ":=" <expresion>
