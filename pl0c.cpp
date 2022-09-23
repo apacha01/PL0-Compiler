@@ -159,6 +159,7 @@ void opCALL(int&,int);                  // pone el opcode para la operacion CALL
 void opRET(int&);                       // pone el opcode para la operacion RET en memoria
 int getSymbolValue(string,int,int);     // devuelve el valor del identificador
 string getSymbolType(string,int,int);   // devuelve el tipo del identificador
+void arreglarMem4bytes(int,int);        // arregla la posicion de memoria con el valor que se le pase
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -530,6 +531,7 @@ proposicion =   [<ident> ":=" <expresion>
 */
 void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     int identValor = 0;
+    int indMemArreglar = 0;
 
     //[<ident> ":=" <expresion>
     if (tokens.tokenType == __IDENT){
@@ -580,8 +582,16 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     else if (tokens.tokenType == __IF){
         expectativa(__IF, f);
         condicion(f, indMem, base, desplazamiento);
+
+        //guardo la memoria para arreglar el JMP que generó condicion
+        indMemArreglar = indMem;
+
         expectativa(__THEN, f);
         proposicion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//==========================================
+        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);     //4 bytes del salto (sin incluir la instrucc. misma)
+        //================================================================
     }
 
     //| "while" <condicion> "do" <proposicion>
@@ -2683,4 +2693,12 @@ string getSymbolType(string token, int base, int desplazamiento){
         finTabla--;
     }
     return "";
+}
+
+void arreglarMem4bytes(int indMemArreglar, int val){
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMemArreglar++] = d[i];
+    }
 }
