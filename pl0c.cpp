@@ -167,6 +167,7 @@ void opRET(int&);                       // pone el opcode para la operacion RET 
 int getSymbolValue(string,int,int);     // devuelve el valor del identificador
 string getSymbolType(string,int,int);   // devuelve el tipo del identificador
 void arreglarMem4bytes(int,int);        // arregla la posicion de memoria con el valor que se le pase
+int byte4toint(char,char,char,char);    // devuelve un int a partir de 4 bytes (del mas signif. al menos)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -661,13 +662,65 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         expectativa(__ESCRIBIR, f);
         expectativa(__PARENTESIS_L, f);
 
-        if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-        else    expresion(f, indMem, base, desplazamiento);
+        if (tokens.tokenType == __STRING){
+            //GENERACION DE CODIGO//===============================================================
+            int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);    //ambos son para
+            int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);     //calc. pos. absoluta
+
+            opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));                                   //necesito pos. abs.
+            opCALL(indMem, IO_MOSTRAR_STRING - indMem);
+            opJMP(indMem, 0x00);                                                                    //salto la cadena
+                                                                                                    //a continuacion
+            indMemArreglar = indMem;
+
+            for (int i = 0; i < tokens.token.length(); i++)
+                memoria[indMem++] = (unsigned char)tokens.token[i];
+            mem0(indMem,1);
+
+            arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);                         //arreglo el salto
+            //=====================================================================================
+            
+            expectativa(__STRING, f);
+        }
+        else{
+            expresion(f, indMem, base, desplazamiento);
+
+            //GENERACION DE CODIGO//========================
+            opPopEAX(indMem);
+            opCALL(indMem, IO_MOSTRAR_EAX_CONSOLA - indMem);
+            //==============================================
+        }
 
         while(tokens.tokenType == __COMA){
             expectativa(__COMA, f);
-            if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-            else    expresion(f, indMem, base, desplazamiento);
+            if (tokens.tokenType == __STRING){
+                //GENERACION DE CODIGO//===============================================================
+                int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
+                int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
+
+                opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));
+                opCALL(indMem, IO_MOSTRAR_STRING - indMem);
+                opJMP(indMem, 0x00);
+
+                indMemArreglar = indMem;
+
+                for (int i = 0; i < tokens.token.length(); i++)
+                    memoria[indMem++] = (unsigned char)tokens.token[i];
+                mem0(indMem,1);
+
+                arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
+                //=====================================================================================
+                
+                expectativa(__STRING, f);
+            }
+            else{
+                expresion(f, indMem, base, desplazamiento);
+
+                //GENERACION DE CODIGO//========================
+                opPopEAX(indMem);
+                opCALL(indMem, IO_MOSTRAR_EAX_CONSOLA - indMem);
+                //==============================================
+            }
         }
 
         if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
@@ -681,13 +734,66 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         if (tokens.tokenType == __PARENTESIS_L){
             expectativa(__PARENTESIS_L, f);
 
-            if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-            else    expresion(f, indMem, base, desplazamiento);
+            if (tokens.tokenType == __STRING){
+                //GENERACION DE CODIGO//===============================================================
+                int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
+                int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
+
+                opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));
+                opCALL(indMem, IO_MOSTRAR_STRING - indMem);
+                opJMP(indMem, 0x00);
+
+                indMemArreglar = indMem;
+
+                for (int i = 0; i < tokens.token.length(); i++)
+                    memoria[indMem++] = (unsigned char)tokens.token[i];
+                mem0(indMem,1);
+
+                arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
+                //=====================================================================================
+                
+                expectativa(__STRING, f);
+            }
+            else{
+                expresion(f, indMem, base, desplazamiento);
+
+                //GENERACION DE CODIGO//========================
+                opPopEAX(indMem);
+                opCALL(indMem, IO_MOSTRAR_EAX_CONSOLA - indMem);
+                //==============================================
+            }
 
             while(tokens.tokenType == __COMA){
                 expectativa(__COMA, f);
-                if (tokens.tokenType == __STRING)   expectativa(__STRING, f);
-                else    expresion(f, indMem, base, desplazamiento);
+
+                if (tokens.tokenType == __STRING){
+                    //GENERACION DE CODIGO//===============================================================
+                    int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
+                    int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
+
+                    opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));
+                    opCALL(indMem, IO_MOSTRAR_STRING - indMem);
+                    opJMP(indMem, 0x00);
+
+                    indMemArreglar = indMem;
+
+                    for (int i = 0; i < tokens.token.length(); i++)
+                        memoria[indMem++] = (unsigned char)tokens.token[i];
+                    mem0(indMem,1);
+
+                    arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
+                    //=====================================================================================
+                    
+                    expectativa(__STRING, f);
+                }
+                else{
+                    expresion(f, indMem, base, desplazamiento);
+
+                    //GENERACION DE CODIGO//=========================
+                    opPopEAX(indMem);
+                    opCALL(indMem, IO_MOSTRAR_EAX_CONSOLA - indMem);
+                    //===============================================
+                }
             }
 
             if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
@@ -2740,4 +2846,12 @@ void arreglarMem4bytes(int indMemArreglar, int val){
     for(int i = 0; i < 4; i++){
         memoria[indMemArreglar++] = d[i];
     }
+}
+
+int byte4toint(char ms, char um, char lm, char ls){
+    int aux = (ls<<0),
+        aux2 = (lm<<8),
+        aux3 = (um<<16),
+        aux4 = (ms<<24);
+    return (aux + aux2 + aux3 + aux4);
 }
