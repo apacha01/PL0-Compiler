@@ -655,14 +655,44 @@ void condicion(FILE* f, int &indMem, int base, int desplazamiento){
 
 //expresion = ["+" | "-"] <termino> {("+" | "-") <termino>}
 void expresion(FILE* f, int &indMem, int base, int desplazamiento){
+    string operador;
+
     if (tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
+        operador = tokens.tokenType;
         pedirLex(f);
     }
+
     termino(f, indMem, base, desplazamiento);
 
+    //GENERACION DE CODIGO//=======
+    if(operador == __RESTA){
+        opPopEAX(indMem);
+        opNEG(indMem);
+        opPushEAX(indMem);
+    }
+    //=============================
+
     while(tokens.tokenType == __SUMA || tokens.tokenType == __RESTA){
+        operador = tokens.tokenType;
+
         pedirLex(f);
         termino(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//===========================
+        if (operador == __SUMA){
+            opPopEAX(indMem);
+            opPopEBX(indMem);
+            opADD(indMem);
+            opPushEAX(indMem);
+        }
+        else if (operador == __RESTA){
+            opPopEAX(indMem);
+            opPopEBX(indMem);
+            opXCHG(indMem);
+            opSUBB(indMem);
+            opPushEAX(indMem);
+        }
+        //=================================================
     }
 }
 
@@ -671,7 +701,7 @@ void termino(FILE* f, int &indMem, int base, int desplazamiento){
     factor(f, indMem, base, desplazamiento);
     while(tokens.tokenType == __MULTIPLICACION || tokens.tokenType == __DIVISION){
         string operador = tokens.tokenType;
-        
+
         pedirLex(f);
         factor(f, indMem, base, desplazamiento);
 
