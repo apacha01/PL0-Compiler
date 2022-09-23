@@ -670,8 +670,28 @@ void expresion(FILE* f, int &indMem, int base, int desplazamiento){
 void termino(FILE* f, int &indMem, int base, int desplazamiento){
     factor(f, indMem, base, desplazamiento);
     while(tokens.tokenType == __MULTIPLICACION || tokens.tokenType == __DIVISION){
+        string operador = tokens.tokenType;
+        
         pedirLex(f);
         factor(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//===========================
+        if (operador == __MULTIPLICACION){
+            opPopEAX(indMem);
+            opPopEBX(indMem);
+            opIMUL(indMem);
+            opPushEAX(indMem);
+        }
+        else if (operador == __DIVISION){
+            opPopEAX(indMem);
+            opPopEBX(indMem);
+            opXCHG(indMem);
+            opCDQ(indMem);
+            opIDIV(indMem);
+            opPushEAX(indMem);
+        }
+        else error("inesperado al operar factores.");
+        //=================================================
     }
 }
 
