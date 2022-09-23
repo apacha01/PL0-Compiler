@@ -506,7 +506,7 @@ void bloque(FILE* f, int &indMem, int &varDir, int base){
     while (tokens.tokenType == __PROCEDURE){
         expectativa(__PROCEDURE, f);
 
-        if(tokens.tokenType == __IDENT) agregarSimbolo(__PROCEDURE, base, desplazamiento, varDir);
+        if(tokens.tokenType == __IDENT) agregarSimbolo(__PROCEDURE, base, desplazamiento, indMem);
         expectativa(__IDENT, f);
         incrementarDesplazamiento(desplazamiento,base);
 
@@ -549,8 +549,18 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     //| "call" <ident>
     else if (tokens.tokenType == __CALL){
         expectativa(__CALL, f);
-        if (tokens.tokenType == __IDENT) verificarIdentificador(CALL, base, desplazamiento);
+
+        if (tokens.tokenType == __IDENT){
+            verificarIdentificador(CALL, base, desplazamiento);
+            if((identValor = getSymbolValue(tokens.token, base, desplazamiento)) == -1)
+                error("al buscar valor de procedure.");
+        }
+
         expectativa(__IDENT, f);
+
+        //GENERACION DE CODIGO//==================
+        opCALL(indMem, identValor - indMem - 5);    // 5 bytes de la propia instruccion
+        //========================================
     }
 
     //| "begin" <proposicion> { ";" <proposicion> } "end"
@@ -816,7 +826,7 @@ void agregarSimbolo(string tipo, int base, int desplazamiento, int &varDir){
 
     if(tipo == __CONSTANTE) simbTab[finTabla].valor = 0;
     if(tipo == __VARIABLE)  simbTab[finTabla].valor = varDir;
-    if(tipo == __PROCEDURE) simbTab[finTabla].valor = 0;
+    if(tipo == __PROCEDURE) simbTab[finTabla].valor = varDir;
 
 }
 
