@@ -157,6 +157,8 @@ void opJPO(int&);                       // pone el opcode para la operacion JPO 
 void opJMP(int&,int);                   // pone el opcode para la operacion JMP en memoria
 void opCALL(int&,int);                  // pone el opcode para la operacion CALL en memoria
 void opRET(int&);                       // pone el opcode para la operacion RET en memoria
+int getSymbolValue(string,int,int);     // devuelve el valor del identificador
+string getSymbolType(string,int,int);   // devuelve el tipo del identificador
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -421,6 +423,7 @@ void pedirLex(FILE* f){
 }
 
 void parser(FILE* f){
+    cgInit();
     programa(f);
 }
 
@@ -680,9 +683,27 @@ factor = <ident>
 void factor(FILE* f, int &indMem, int base, int desplazamiento){
     if (tokens.tokenType == __IDENT){
         verificarIdentificador(RIGHT, base, desplazamiento);
+
+        //GENERACION DE CODIGO//====================================================
+        string tipo = getSymbolType(tokens.token, base, desplazamiento);
+        if (tipo == __CONSTANTE)
+            opMoveEAX(indMem, getSymbolValue(tokens.token,base,desplazamiento));
+        else if(tipo == __VARIABLE)
+            opMoveEAX_EDI(indMem, getSymbolValue(tokens.token,base,desplazamiento));
+        else errorSemant("ese token no existe: '", tokens.token);
+
+        opPushEAX(indMem);
+        //==========================================================================
+
         expectativa(__IDENT, f);
     }
     else if(tokens.tokenType == __NUMERO){
+
+        //GENERACION DE CODIGO//============================
+        opMoveEAX(indMem, atoi((tokens.token).c_str()));
+        opPushEAX(indMem);
+        //==================================================
+
         expectativa(__NUMERO, f);
     }
     else if (tokens.tokenType == __PARENTESIS_L){
@@ -2553,4 +2574,22 @@ void opRET(int &indMem){
     memoria[indMem++] = 0xC3;
 }
 
+int getSymbolValue(string token, int base, int desplazamiento){
+    int finTabla = base + desplazamiento - 1;
 
+    while(finTabla != -1){
+        if (token == simbTab[finTabla].nombre)  return simbTab[finTabla].valor;
+        finTabla--;
+    }
+    return -1;
+}
+
+string getSymbolType(string token, int base, int desplazamiento){
+    int finTabla = base + desplazamiento - 1;
+
+    while(finTabla != -1){
+        if (token == simbTab[finTabla].nombre)  return simbTab[finTabla].tipo;
+        finTabla--;
+    }
+    return "";
+}
