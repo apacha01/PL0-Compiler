@@ -532,6 +532,7 @@ proposicion =   [<ident> ":=" <expresion>
 void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     int identValor = 0;
     int indMemArreglar = 0;
+    int indMemJMP = 0;
 
     //[<ident> ":=" <expresion>
     if (tokens.tokenType == __IDENT){
@@ -597,9 +598,18 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     //| "while" <condicion> "do" <proposicion>
     else if (tokens.tokenType == __WHILE){
         expectativa(__WHILE, f);
+        
+        indMemJMP = indMem;
         condicion(f, indMem, base, desplazamiento);
+        
+        indMemArreglar = indMem;
         expectativa(__DO, f);
         proposicion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//===========================================
+        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
+        opJMP(indMem, indMemJMP - indMem);
+        //=================================================================
     }
 
     //| "readln" "(" <ident> {"," <ident>} ")"
