@@ -79,6 +79,7 @@ struct tablaSimbolos
     int valor;
 };
 typedef tablaSimbolos arrSimbolos [MAX];
+typedef char arr4Bytes[4];
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //VARIBALES GLOBALES
@@ -129,6 +130,34 @@ void incrementarDesplazamiento(int&,int);   // incrementa desplazamiento, error 
 
 //GENERADOR DE CODIGO
 void cgInit();                          // inicializa las primeras pos. de memoria que siempre van a ser igual
+void inttchar(int,arr4Bytes);           // pone en un array de chars los 4 bytes del valor del int (en little endian)
+void mem0(int&,int);                    // pone en memoria x cantidad de 0s
+void opMoveEDI(int&);                   // pone el opcode para la operacion MOVE EDI en memoria
+void opMoveEAX_EDI(int&,int);           // pone el opcode para la operacion MOVE EAX, EDI en memoria
+void opMoveEDI_EAX(int&,int);           // pone el opcode para la operacion MOVE EDI, EAX en memoria
+void opMoveEAX(int&,int);               // pone el opcode para la operacion MOVE EAX en memoria
+void opXCHG(int&);                      // pone el opcode para la operacion XCHG en memoria
+void opPushEAX(int&);                   // pone el opcode para la operacion PUSH EAX en memoria
+void opPopEAX(int&);                    // pone el opcode para la operacion POP EAX en memoria
+void opPopEBX(int&);                    // pone el opcode para la operacion POP EBX en memoria
+void opADD(int&);                       // pone el opcode para la operacion ADD en memoria
+void opSUBB(int&);                      // pone el opcode para la operacion SUBB en memoria
+void opIMUL(int&);                      // pone el opcode para la operacion IMUL en memoria
+void opIDIV(int&);                      // pone el opcode para la operacion IDIV en memoria
+void opCDQ(int&);                       // pone el opcode para la operacion CDQ en memoria
+void opNEG(int&);                       // pone el opcode para la operacion NEG en memoria
+void opTEST(int&,char);                 // pone el opcode para la operacion TEST en memoria
+void opCMP(int&);                       // pone el opcode para la operacion CMP en memoria
+void opJE(int&);                        // pone el opcode para la operacion JE en memoria
+void opJNE(int&);                       // pone el opcode para la operacion JNE en memoria
+void opJL(int&);                        // pone el opcode para la operacion JL en memoria
+void opJLE(int&);                       // pone el opcode para la operacion JLE en memoria
+void opJG(int&);                        // pone el opcode para la operacion JG en memoria
+void opJGE(int&);                       // pone el opcode para la operacion JGE en memoria
+void opJPO(int&);                       // pone el opcode para la operacion JPO en memoria
+void opJMP(int&,int);                   // pone el opcode para la operacion JMP en memoria
+void opCALL(int&,int);                  // pone el opcode para la operacion CALL en memoria
+void opRET(int&);                       // pone el opcode para la operacion RET en memoria
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -2345,5 +2374,182 @@ void cgInit(){
         memoria[i] = 0x00;
 }
 
+void inttchar(int val, arr4Bytes a){
+    if (val >= 0){
+        for(int i = 0; i < 4; i++){
+            char resp = (char)(val%256);
+            a[i] = resp;
+            val/=256;
+        }
+    }
+    else {
+        for(int i = 0; i < 4; i++){
+            char resp = (char)(val%256);
+            resp == 0 ? a[i] = (unsigned char)0xFF : a[i] = resp;
+            val/=256;
+        }
+    }
+}
+
+void mem0(int &indMem, int cant){
+    for (int i = 0; i < cant; i++)
+        memoria[indMem++] = 0x00;
+}
+
+void opMoveEDI(int &indMem, int val){
+    memoria[indMem++] = 0xBF;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
+void opMoveEAX_EDI(int &indMem, int val){
+    memoria[indMem++] = 0x8B;
+    memoria[indMem++] = 0x87;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
+void opMoveEDI_EAX(int &indMem, int val){
+    memoria[indMem++] = 0x89;
+    memoria[indMem++] = 0x87;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
+void opMoveEAX(int &indMem, int val){
+    memoria[indMem++] = 0xB8;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
+void opXCHG(int &indMem){
+    memoria[indMem++] = 0x93;
+}
+
+void opPushEAX(int &indMem){
+    memoria[indMem++] = 0x50;
+}
+
+void opPopEAX(int &indMem){
+    memoria[indMem++] = 0x58;
+}
+
+void opPopEBX(int &indMem){
+    memoria[indMem++] = 0x5B;
+}
+
+void opADD(int &indMem){
+    memoria[indMem++] = 0x01;
+    memoria[indMem++] = 0xD8;
+}
+
+void opSUBB(int &indMem){
+    memoria[indMem++] = 0x29;
+    memoria[indMem++] = 0xD8;
+}
+
+void opIMUL(int &indMem){
+    memoria[indMem++] = 0xF7;
+    memoria[indMem++] = 0xEB;
+}
+
+void opIDIV(int &indMem){
+    memoria[indMem++] = 0xF7;
+    memoria[indMem++] = 0xFB;
+}
+
+void opCDQ(int &indMem){
+    memoria[indMem++] = 0x99;
+}
+
+void opNEG(int &indMem){
+    memoria[indMem++] = 0xF7;
+    memoria[indMem++] = 0xD8;
+}
+
+void opTEST(int &indMem, char val){
+    memoria[indMem++] = 0xA8;
+    memoria[indMem++] = val;
+}
+
+void opCMP(int &indMem){
+    memoria[indMem++] = 0x39;
+    memoria[indMem++] = 0xC3;
+}
+
+void opJE(int &indMem){
+    memoria[indMem++] = 0x74;
+    memoria[indMem++] = 0x05;
+}
+
+void opJNE(int &indMem){
+    memoria[indMem++] = 0x75;
+    memoria[indMem++] = 0x05;
+}
+
+void opJL(int &indMem){
+    memoria[indMem++] = 0x7C;
+    memoria[indMem++] = 0x05;
+}
+
+void opJLE(int &indMem){
+    memoria[indMem++] = 0x7E;
+    memoria[indMem++] = 0x05;
+}
+
+void opJG(int &indMem){
+    memoria[indMem++] = 0x7F;
+    memoria[indMem++] = 0x05;
+}
+
+void opJGE(int &indMem){
+    memoria[indMem++] = 0x7D;
+    memoria[indMem++] = 0x05;
+}
+
+void opJPO(int &indMem){
+    memoria[indMem++] = 0x7B;
+    memoria[indMem++] = 0x05;
+}
+
+void opJMP(int &indMem, int val){
+    memoria[indMem++] = 0xE9;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
+void opCALL(int &indMem, int val){
+    memoria[indMem++] = 0xE8;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
+void opRET(int &indMem){
+    memoria[indMem++] = 0xC3;
+}
 
 
