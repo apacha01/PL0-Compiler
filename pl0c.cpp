@@ -69,7 +69,9 @@ using namespace std;
 #define IO_MOSTRAR_EAX_CONSOLA  0x0420  // muestra por consola el número entero contenido en EAX.
 #define IO_FINALIZA_PROGRAMA    0x0588  // finaliza el programa
 #define IO_LECTURA_TECLADO      0x0590  // lee por consola un número entero y lo deja guardado en EAX.
-
+#define __LONG_MAX              4294967296
+#define ENCABEZADO              0x200
+#define LARGO_BYTES_JMP_CALL    0x05
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //STRUCTS
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +98,7 @@ static char lectura;		//donde se guardan los caracteres que se leen del archivo
 static infoLectura tokens;	//donde se guarda la info de lo que se lee
 static arrSimbolos simbTab; //tabla de simbolos
 static unsigned char memoria[8192]; //donde se guardan los bytes de las instrucciones x86
+static int tamMemoria;      //donde se guarda el tamaño final de la memoria
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //PROTOTIPOS DE FUNCIONES
@@ -120,7 +123,7 @@ void parser(FILE*);                     // checkea la sintaxis del codigo
 void pedirLex(FILE*);                   // le pide al lexer el siguiente token/palabra
 void expectativa(string,FILE*);         // checkea si el token es el esperado sintacticamente, error si no
 void programa(FILE*);                   // procesa el grafo de programa del lenguaje
-int bloque(FILE*,int&,int&,int);       // procesa el grafo de bloque del lenguaje
+void bloque(FILE*,int&,int&,int,int&);  // procesa el grafo de bloque del lenguaje
 void proposicion(FILE*,int&,int,int);   // procesa el grafo de proposicion del lenguaje
 void condicion(FILE*,int&,int,int);     // procesa el grafo de condicion del lenguaje
 void expresion(FILE*,int&,int,int);     // procesa el grafo de expresion del lenguaje
@@ -136,7 +139,7 @@ void incDesplazamiento(int&,int);           // incrementa desplazamiento, error 
 
 //GENERADOR DE CODIGO
 void cgInit();                          // inicializa las primeras pos. de memoria que siempre van a ser igual
-void inttchar(int,arr4Bytes);           // pone en un array de chars los 4 bytes del valor del int (en little endian)
+void inttchar(long long int,arr4Bytes);           // pone en un array de chars los 4 bytes del valor del int (en little endian)
 void mem0(int&,int);                    // pone en memoria x cantidad de 0s
 void opMoveEDI(int&);                   // pone el opcode para la operacion MOVE EDI en memoria
 void opMoveEAX_EDI(int&,int);           // pone el opcode para la operacion MOVE EAX, EDI en memoria
@@ -198,9 +201,9 @@ int main(int argc, char *argv[]){
     cout<<"\n\n\n\tTABLA DE SIMBOLOS AL FINAL DEL PROGRAMA:\n"<<endl;
     for(int i = 0; i <= 15; i++)
         cout<<"\t\tNOMBRE:"<<simbTab[i].nombre<<"\t->\tTIPO:"<<simbTab[i].tipo<<"\t->\tVALOR:"<<simbTab[i].valor<<endl;
-    
+
     cout<<"\n\n\n\tARRAY MEMORIA:\n"<<endl;
-    cout<<"Offset\t0\t1\t2\t3\t4\t5\t6\t7\t\t8\t9\tA\tB\tC\tD\tE\tF"<<endl;
+    cout<<"Offset\t0\t1\t2\t3\t4\t5\t6\t7\t\t8\t9\tA\t\tB\tC\tD\tE\tF"<<endl;
 
     for(int i = 1792; i <= 2000; i+=16){
         cout<<hex<<uppercase<<i<<"\t";
@@ -212,6 +215,19 @@ int main(int argc, char *argv[]){
         }
         cout<<endl;
     }
+
+    FILE* exe;
+    string exeFile = filename;
+
+    //elimino rutas en el nombre del archivo
+    int ind = exeFile.find_last_of('/');
+    if (ind != string::npos) exeFile = exeFile.substr(ind+1, exeFile.length()-ind);
+    exeFile.replace((exeFile.length()) - 3, 3, "exe");
+
+    exe = fopen(exeFile.c_str(), "wb+");
+
+    for(int i = 0; i < tamMemoria; i++)
+        fwrite(&memoria[i], sizeof(char), 1, exe);
 
     return 0;
 }
@@ -447,7 +463,7 @@ void programa(FILE* f){
     int indiceMemoria = 1797;
     int cantVar = 0;
 
-    cantVar = bloque(f, indiceMemoria, varDir, 0);
+    bloque(f, indiceMemoria, varDir, 0, cantVar);
     expectativa(__PUNTO, f);
 
     //GENERACION DE CODIGO//=======================================================================
@@ -456,19 +472,22 @@ void programa(FILE* f){
     int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
     int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
 
-    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria);    // arreglo direccion de la tabla de simbolos
+    // arreglo direccion de la tabla de simbolos, resto el encabezado (200) y la propia instruccion (5)
+    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria - ENCABEZADO);
 
     for (int i = 0; i < cantVar; i++)                           // pongo 4 0's por variable en el programa
         mem0(indiceMemoria, 4);
 
-    arreglarMem4bytes(416, indiceMemoria);                      // arreglo VirtualSize con el tamaño actual de text section
-    
+    arreglarMem4bytes(416, indiceMemoria - ENCABEZADO);         // arreglo VirtualSize con el tamaño actual de text section
+
     int fileAlignment = byte4toint(memoria[223], memoria[222], memoria[221], memoria[220]);
     while((indiceMemoria % fileAlignment) != 0)
         mem0(indiceMemoria, 1);                                 // inserto 0's para q tamaño sea multiplo de FileAlignment
-    
-    arreglarMem4bytes(188, indiceMemoria);                      // ajusto SizeOfCodeSection con el tamaño de text
-    arreglarMem4bytes(424, indiceMemoria);                      // ajusto SizeOfRawData con el tamaño de text
+
+    tamMemoria = indiceMemoria;
+
+    arreglarMem4bytes(188, indiceMemoria - ENCABEZADO);         // ajusto SizeOfCodeSection con el tamaño de text
+    arreglarMem4bytes(424, indiceMemoria - ENCABEZADO);         // ajusto SizeOfRawData con el tamaño de text
 
     int SizeOfCodeSection = byte4toint(memoria[191], memoria[190], memoria[189], memoria[188]);
     int SizeOfRawData = byte4toint(memoria[427], memoria[426], memoria[425], memoria[424]);
@@ -486,7 +505,7 @@ void programa(FILE* f){
 //bloque = ["const" <ident> = <numero> ["," <ident> = <numero>] ";"]
 //          |["var" <ident> ["," <ident>] ";"]
 //          |{"procedure" <ident> ";" <bloque>} <proposicion>
-int bloque(FILE* f, int &indMem, int &varDir, int base){
+void bloque(FILE* f, int &indMem, int &varDir, int base, int &cantVar){
     int desplazamiento = 0;
     int indMemProcedureArreglar = 0;
 
@@ -529,6 +548,7 @@ int bloque(FILE* f, int &indMem, int &varDir, int base){
 
         if(tokens.tokenType == __IDENT){
             agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
+            cantVar++;
             varDir += 4;
             incDesplazamiento(desplazamiento,base);
         }
@@ -539,6 +559,7 @@ int bloque(FILE* f, int &indMem, int &varDir, int base){
 
             if(tokens.tokenType == __IDENT){
                 agregarSimbolo(__VARIABLE, base, desplazamiento, varDir);
+                cantVar++;
                 varDir += 4;
                 incDesplazamiento(desplazamiento,base);
             }
@@ -557,7 +578,7 @@ int bloque(FILE* f, int &indMem, int &varDir, int base){
         incDesplazamiento(desplazamiento,base);
 
         expectativa(__PUNTO_COMA, f);
-        bloque(f, indMem, varDir, base+desplazamiento);
+        bloque(f, indMem, varDir, base+desplazamiento, cantVar);
         expectativa(__PUNTO_COMA, f);
 
         //GENERACION DE CODIGO
@@ -571,8 +592,6 @@ int bloque(FILE* f, int &indMem, int &varDir, int base){
 
     //<proposicion>
     proposicion(f, indMem, base, desplazamiento);
-
-    return (base + desplazamiento);
 }
 /*
 proposicion =   [<ident> ":=" <expresion>
@@ -617,7 +636,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         expectativa(__IDENT, f);
 
         //GENERACION DE CODIGO//==================
-        opCALL(indMem, identValor - indMem - 5);    // 5 bytes de la propia instruccion
+        opCALL(indMem, identValor - indMem);    // 5 bytes de la propia instruccion
         //========================================
     }
 
@@ -653,16 +672,16 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     //| "while" <condicion> "do" <proposicion>
     else if (tokens.tokenType == __WHILE){
         expectativa(__WHILE, f);
-        
+
         indMemJMP = indMem;
         condicion(f, indMem, base, desplazamiento);
-        
+
         indMemArreglar = indMem;
         expectativa(__DO, f);
         proposicion(f, indMem, base, desplazamiento);
 
         //GENERACION DE CODIGO//===========================================
-        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
+        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar + 5);
         opJMP(indMem, indMemJMP - indMem);
         //=================================================================
     }
@@ -714,19 +733,17 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);    //ambos son para
             int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);     //calc. pos. absoluta
 
-            opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));                                   //necesito pos. abs.
+            opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem - ENCABEZADO + 0x0A + LARGO_BYTES_JMP_CALL)); //necesito pos. abs.
             opCALL(indMem, IO_MOSTRAR_STRING - indMem);
-            opJMP(indMem, 0x00);                                                                    //salto la cadena
+            opJMP(indMem, tokens.token.length()+1);                                                 //salto la cadena
                                                                                                     //a continuacion
             indMemArreglar = indMem;
 
             for (int i = 0; i < tokens.token.length(); i++)
                 memoria[indMem++] = (unsigned char)tokens.token[i];
             mem0(indMem,1);
-
-            arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);                         //arreglo el salto
             //=====================================================================================
-            
+
             expectativa(__STRING, f);
         }
         else{
@@ -745,19 +762,17 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
                 int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
                 int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
 
-                opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));
+                opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem - ENCABEZADO + (LARGO_BYTES_JMP_CALL * 3)));
                 opCALL(indMem, IO_MOSTRAR_STRING - indMem);
-                opJMP(indMem, 0x00);
+                opJMP(indMem, tokens.token.length()+1);
 
                 indMemArreglar = indMem;
 
                 for (int i = 0; i < tokens.token.length(); i++)
                     memoria[indMem++] = (unsigned char)tokens.token[i];
                 mem0(indMem,1);
-
-                arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
                 //=====================================================================================
-                
+
                 expectativa(__STRING, f);
             }
             else{
@@ -786,19 +801,17 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
                 int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
                 int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
 
-                opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));
+                opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem - ENCABEZADO + (LARGO_BYTES_JMP_CALL*3)));
                 opCALL(indMem, IO_MOSTRAR_STRING - indMem);
-                opJMP(indMem, 0x00);
+                opJMP(indMem, tokens.token.length()+1);
 
                 indMemArreglar = indMem;
 
                 for (int i = 0; i < tokens.token.length(); i++)
                     memoria[indMem++] = (unsigned char)tokens.token[i];
                 mem0(indMem,1);
-
-                arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
                 //=====================================================================================
-                
+
                 expectativa(__STRING, f);
             }
             else{
@@ -818,19 +831,17 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
                     int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
                     int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
 
-                    opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem));
+                    opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem - ENCABEZADO + (LARGO_BYTES_JMP_CALL*3)));
                     opCALL(indMem, IO_MOSTRAR_STRING - indMem);
-                    opJMP(indMem, 0x00);
+                    opJMP(indMem, tokens.token.length()+1);
 
                     indMemArreglar = indMem;
 
                     for (int i = 0; i < tokens.token.length(); i++)
                         memoria[indMem++] = (unsigned char)tokens.token[i];
                     mem0(indMem,1);
-
-                    arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);
                     //=====================================================================================
-                    
+
                     expectativa(__STRING, f);
                 }
                 else{
@@ -846,6 +857,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             if(tokens.tokenType != __PARENTESIS_R) expectativa(__PAREN_O_C, f);
             else expectativa(__PARENTESIS_R, f);
         }
+        opCALL(indMem, IO_SALTO_LINEA_CONSOLA - indMem);
     }
 }
 
@@ -2689,20 +2701,14 @@ void cgInit(){
         memoria[i] = 0x00;
 }
 
-void inttchar(int val, arr4Bytes a){
-    if (val >= 0){
-        for(int i = 0; i < 4; i++){
-            char resp = (char)(val%256);
-            a[i] = resp;
-            val/=256;
-        }
+void inttchar(long long int val, arr4Bytes a){
+    if (val < 0){
+        val = __LONG_MAX + val;
     }
-    else {
-        for(int i = 0; i < 4; i++){
-            char resp = (char)(val%256);
-            resp == 0 ? a[i] = (unsigned char)0xFF : a[i] = resp;
-            val/=256;
-        }
+    for(int i = 0; i < 4; i++){
+        char resp = (char)(val%256);
+        a[i] = resp;
+        val/=256;
     }
 }
 
@@ -2844,6 +2850,7 @@ void opJPO(int &indMem){
 }
 
 void opJMP(int &indMem, int val){
+    if(val < 0) val -= 5;
     memoria[indMem++] = 0xE9;
 
     arr4Bytes d;
@@ -2854,6 +2861,7 @@ void opJMP(int &indMem, int val){
 }
 
 void opCALL(int &indMem, int val){
+    if(val < 0) val -= 5;
     memoria[indMem++] = 0xE8;
 
     arr4Bytes d;
