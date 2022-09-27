@@ -1,4 +1,4 @@
-var x,i,o;
+var x,i,o,cant;
 
 procedure divthree;
   var div, tmp;
@@ -20,7 +20,9 @@ end;
 
 begin
   x := 0;
-  while x <> 100 do
+  writeln('Ingrese un numero entero hasta el que aplicar el algoritmo FizzBuzz: ');
+  readln(cant);
+  while x <> cant do
   begin
     x := x + 1;
     i := x;
@@ -35,6 +37,5 @@ begin
       writeln ('FizzBuzz');
     if o = 0 then
       writeln (x);
-    writeln;
   end;
 end.

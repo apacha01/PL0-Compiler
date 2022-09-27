@@ -7,7 +7,14 @@ procedure INICIAR;
   call ASIGNAR;
 
 begin
+  writeln ('*****************************************************************');
+  writeln ('Se ingresa un valor, se muestra su doble.');
+  writeln ('Ejemplo de eclipse de nombres (shadowing) en la asignacion X := Y');
+  writeln ('(la variable global Y es eclipsada por la constante local Y)');
+  writeln ('*****************************************************************');
+  
   write ('NUM='); readln (Y);
   call INICIAR;
-  writeln ('NUM*2=',Y*X)
+  writeln ('NUM*2=',Y*X);
+  writeln
 end.

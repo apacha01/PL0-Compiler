@@ -1,42 +1,29 @@
-CONST N 20;
+var K;
+procedure P;
+  procedure coma;
+  begin
+    write (',');
+    K := K + 1;
+    call P
+  end;
+begin
+  if K < 10 then
+    begin
+      write (K);
+      call K;
+    end
+end;
 
-VAR A, B, C;
+begin
+  writeln ('***********************************************************');
+  writeln ('Se muestran los numeros del 1 al 10, separados por comas.');
+  writeln ('El procedimiento P llama al procedimiento coma y viceversa.');
+  writeln ('El problema de la inexistencia de "forward declarations"');
+  writeln ('se soluciona mediante el anidamiento de los procedimientos.');
+  writeln ('***********************************************************');
 
-PROCEDURE TRI#NGULO;
-VAR A, B;
-BEGIN
-  WRITELN;
-  A := 15;
-  WHILE A > 0 DO
-    BEGIN
-      B := 0;
-      WHILE B < A DO
-        BEGIN
-          WRITE ('*')
-          B := B + 1
-        END;
-      WRITELN;
-      A := A - 1;
-    END
-END;
-
-BEGIN
-  A := 111111111111111111;
-  WHILE A <= N DO
-    BEGIN
-      WRITE (A, ' ');
-      A := A + TRIANGULO
-    END;
-
-  CALL TRIANGULO;
-
-  B := -N;
-  C := 0;
-  WHILE B < C DO
-    BEGIN
-      WRITE (B, ' ');
-      B := B + 1
-    END;
-  WRITELN;
-
-END.
+  K := 1;
+  call P;
+  writeln (10);
+  writeln
+end.

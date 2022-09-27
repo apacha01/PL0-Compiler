@@ -11,6 +11,12 @@ BEGIN
 END;
 
 BEGIN
+  writeln ('****************************************************');
+  writeln ('Se ingresa un valor, se muestra su raiz cuadrada o');
+  writeln ('el intervalo al que pertenece, si esta no es entera.');
+  writeln ('Se utiliza el algoritmo de busqueda lineal.');
+  writeln ('****************************************************');
+
   WRITE ('N: '); READLN (N);
   WRITE ('RAIZ CUADRADA DE ', N, ': ');
   IF N < 0 THEN WRITE ('ERROR');
@@ -21,5 +27,6 @@ BEGIN
       IF R*R<>N THEN WRITE (R - 1, '..');
       WRITE (R);
     END;
-  WRITELN
+  WRITELN;
+  writeln;
 END.

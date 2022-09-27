@@ -30,11 +30,19 @@ call DIVIDIR;
 
 procedure SALIDA;
 begin
-  write ('Cociente: ', Q); writeln;
-  write ('Resto: ', R); writeln;
+  write ('  Cociente: ', Q); writeln;
+  write ('  Resto: '); writeln (R);
 end;
 
 begin
+  writeln ('************************************************************');
+  writeln ('Se ingresan dos valores, se muestra su cociente.');
+  writeln ('Se utilizan dos metodos:');
+  writeln ('Metodo 1: el algoritmo "desplazar y restar" (shift-subtract)');
+  writeln ('Metodo 2: el operador / (division entera) provisto por PL/0.');
+  writeln ('Cada CALL DIVIDIR se refiere a un procedimiento distinto.');
+  writeln ('************************************************************');
+
   write ('Dividendo: '); readln (X);
   write ('Divisor: '); readln (Y);
   writeln;
@@ -46,5 +54,6 @@ begin
       write ('Metodo 2'); writeln;
       call OTRO;
       call SALIDA;
-    end
+    end;
+  writeln
 end.

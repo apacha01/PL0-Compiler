@@ -19,8 +19,15 @@ begin
 end;
 
 Begin
-     write ('X: '); readLn (X);
-     write ('Y: '); readLn (Y);
-     call MULTIPLICAR;
-     writeLn ('X*Y=', Z);
+  writeln ('************************************************************');
+  writeln ('Se ingresan dos valores, se muestra su producto.');
+  writeln ('Se utiliza el algoritmo de "multiplicacion por duplicacion".');
+  writeln ('(Metodo campesino ruso de multiplicacion)');
+  writeln ('************************************************************');
+
+  write ('X: '); readLn (X);
+  write ('Y: '); readLn (Y);
+  call MULTIPLICAR;
+  writeLn ('X*Y=', Z);
+  writeln;
 end.

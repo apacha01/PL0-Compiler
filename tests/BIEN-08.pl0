@@ -1,21 +1,49 @@
-var K;
-procedure P;
-  procedure coma;
-  begin
-    write (',');
-    K := K + 1;
-    call P
-  end;
-begin
-  if K < 10 then
-    begin
-      write (K);
-      call coma;
-    end
-end;
+CONST N = 20;
 
-begin
-  K := 1;
-  call P;
-  writeln (10)
-end.
+VAR A, B, C;
+
+PROCEDURE TRIANGULO;
+VAR A, B;
+BEGIN
+  WRITELN;
+  A := 15;
+  WHILE A > 0 DO
+    BEGIN
+      B := 0;
+      WHILE B < A DO
+        BEGIN
+          WRITE ('*');
+          B := B + 1
+        END;
+      WRITELN;
+      A := A - 1;
+    END
+END;
+
+BEGIN
+  writeln ('***************************************************');
+  writeln ('ARTE ASCII EN PL/0.');
+  writeln ('DOS SECUENCIAS ENTERAS Y UN TRIANGULO RECTANGULO...');
+  writeln ('ANONIMO (S. XX)');
+  writeln ('***************************************************');
+
+  A := 1;
+  WHILE A <= N DO
+    BEGIN
+      WRITE (A, ' ');
+      A := A + 1
+    END;
+
+  CALL TRIANGULO;
+
+  B := -N;
+  C := 0;
+  WHILE B < C DO
+    BEGIN
+      WRITE (B, ' ');
+      B := B + 1
+    END;
+  WRITELN;
+  writeln
+
+END.

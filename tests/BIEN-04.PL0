@@ -6,13 +6,18 @@ begin
   F := X; G := Y;
   while F <> G do
     begin
-      if F < G then  G := G - F;
-      IF G < F then  F := F - G
+      if F < G then G := G - F;
+      IF G < F then F := F - G
     end;
   Z:= F
 end;
 
 begin
+  writeln ('************************************************************');
+  writeln ('Se ingresan dos valores, se muestra su maximo comun divisor.');
+  writeln ('Se utiliza el algoritmo de Euclides.');
+  writeln ('************************************************************');
+
   write ('X: '); readln (X);
   if X > 0 then
     begin
@@ -20,7 +25,8 @@ begin
       if Y > 0 then
         begin
           call MCD;
-          writeln ('MCD: ', Z); writeln
+          writeln ('MCD: ', Z)
         end
-    end
+    end;
+	writeln
 end.
