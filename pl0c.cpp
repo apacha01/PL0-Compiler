@@ -70,8 +70,8 @@ using namespace std;
 #define IO_FINALIZA_PROGRAMA    0x0588  // finaliza el programa
 #define IO_LECTURA_TECLADO      0x0590  // lee por consola un número entero y lo deja guardado en EAX.
 #define __LONG_MAX              4294967296
-#define ENCABEZADO              0x200
-#define LARGO_BYTES_JMP_CALL    0x05
+#define ENCABEZADO              0x200 	// largo de encabezado
+#define LARGO_BYTES_JMP_CALL    0x05 	// largo del opcode JMP y CALL (incluidas las direcciones)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //STRUCTS
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +190,6 @@ int main(int argc, char *argv[]){
 
     fetch(fuente);
 
-    cout<<"linea\t|\tS\t\tCAD"<<endl;
     do{
         lexer(fuente);
         parser(fuente);
@@ -201,20 +200,6 @@ int main(int argc, char *argv[]){
     cout<<"\n\n\n\tTABLA DE SIMBOLOS AL FINAL DEL PROGRAMA:\n"<<endl;
     for(int i = 0; i <= 15; i++)
         cout<<"\t\tNOMBRE:"<<simbTab[i].nombre<<"\t->\tTIPO:"<<simbTab[i].tipo<<"\t->\tVALOR:"<<simbTab[i].valor<<endl;
-
-    cout<<"\n\n\n\tARRAY MEMORIA:\n"<<endl;
-    cout<<"Offset\t0\t1\t2\t3\t4\t5\t6\t7\t\t8\t9\tA\t\tB\tC\tD\tE\tF"<<endl;
-
-    for(int i = 1792; i <= 2000; i+=16){
-        cout<<hex<<uppercase<<i<<"\t";
-        for (int j = i; j < i+16; j++){
-            if(memoria[j] < 16) cout<<"0"<<(int)memoria[j]<<"\t";
-            else cout<<(int)memoria[j]<<"\t";
-
-            if(j == i+7) cout<<"\t";
-        }
-        cout<<endl;
-    }
 
     FILE* exe;
     string exeFile = filename;
@@ -228,6 +213,8 @@ int main(int argc, char *argv[]){
 
     for(int i = 0; i < tamMemoria; i++)
         fwrite(&memoria[i], sizeof(char), 1, exe);
+
+    cout<<"Se compilo el archivo correctamente. Nombre del archivo: "<<exeFile<<endl;
 
     return 0;
 }
@@ -434,12 +421,8 @@ void cadena(FILE *f){
 ////////////////////////////////////////////////PARSER
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void expectativa(string tokEsperado, FILE* f){
-
-    if (tokEsperado != tokens.tokenType){
-        errorSintax("error sintactico.", tokEsperado);
-    }
-
-    cout<<linea<<"\t|\t"<<tokens.tokenType<<(tokens.tokenType != __PROCEDURE ? "\t\t" : "\t")<<tokens.token<<endl;
+    if (tokEsperado != tokens.tokenType)
+    	errorSintax("error sintactico.", tokEsperado);
     pedirLex(f);
 }
 
@@ -473,7 +456,7 @@ void programa(FILE* f){
     int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
 
     // arreglo direccion de la tabla de simbolos, resto el encabezado (200) y la propia instruccion (5)
-    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria - ENCABEZADO);
+    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria - ENCABEZADO - LARGO_BYTES_JMP_CALL);
 
     for (int i = 0; i < cantVar; i++)                           // pongo 4 0's por variable en el programa
         mem0(indiceMemoria, 4);
@@ -636,7 +619,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         expectativa(__IDENT, f);
 
         //GENERACION DE CODIGO//==================
-        opCALL(indMem, identValor - indMem);    // 5 bytes de la propia instruccion
+        opCALL(indMem, identValor - indMem);
         //========================================
     }
 
@@ -681,7 +664,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         proposicion(f, indMem, base, desplazamiento);
 
         //GENERACION DE CODIGO//===========================================
-        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar + 5);
+        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar + LARGO_BYTES_JMP_CALL);
         opJMP(indMem, indMemJMP - indMem);
         //=================================================================
     }
@@ -733,7 +716,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);    //ambos son para
             int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);     //calc. pos. absoluta
 
-            opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem - ENCABEZADO + 0x0A + LARGO_BYTES_JMP_CALL)); //necesito pos. abs.
+            opMoveEAX(indMem, (BaseOfCode + ImageBase + indMem - ENCABEZADO + (LARGO_BYTES_JMP_CALL*3))); //necesito pos. abs.
             opCALL(indMem, IO_MOSTRAR_STRING - indMem);
             opJMP(indMem, tokens.token.length()+1);                                                 //salto la cadena
                                                                                                     //a continuacion
@@ -2816,41 +2799,41 @@ void opCMP(int &indMem){
 
 void opJE(int &indMem){
     memoria[indMem++] = 0x74;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJNE(int &indMem){
     memoria[indMem++] = 0x75;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJL(int &indMem){
     memoria[indMem++] = 0x7C;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJLE(int &indMem){
     memoria[indMem++] = 0x7E;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJG(int &indMem){
     memoria[indMem++] = 0x7F;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJGE(int &indMem){
     memoria[indMem++] = 0x7D;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJPO(int &indMem){
     memoria[indMem++] = 0x7B;
-    memoria[indMem++] = 0x05;
+    memoria[indMem++] = LARGO_BYTES_JMP_CALL;
 }
 
 void opJMP(int &indMem, int val){
-    if(val < 0) val -= 5;
+    if(val < 0) val -= LARGO_BYTES_JMP_CALL;
     memoria[indMem++] = 0xE9;
 
     arr4Bytes d;
@@ -2861,7 +2844,7 @@ void opJMP(int &indMem, int val){
 }
 
 void opCALL(int &indMem, int val){
-    if(val < 0) val -= 5;
+    if(val < 0) val -= LARGO_BYTES_JMP_CALL;
     memoria[indMem++] = 0xE8;
 
     arr4Bytes d;
