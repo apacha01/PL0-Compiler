@@ -455,8 +455,8 @@ void programa(FILE* f){
     int BaseOfCode = byte4toint(memoria[207], memoria[206], memoria[205], memoria[204]);
     int ImageBase = byte4toint(memoria[215], memoria[214], memoria[213], memoria[212]);
 
-    // arreglo direccion de la tabla de simbolos, resto el encabezado (200) y la propia instruccion (5)
-    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria - ENCABEZADO - LARGO_BYTES_JMP_CALL);
+    // arreglo direccion de la tabla de simbolos, resto el encabezado (200)
+    arreglarMem4bytes(1793, BaseOfCode + ImageBase + indiceMemoria - ENCABEZADO);
 
     for (int i = 0; i < cantVar; i++)                           // pongo 4 0's por variable en el programa
         mem0(indiceMemoria, 4);
