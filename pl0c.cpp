@@ -570,7 +570,9 @@ void bloque(FILE* f, int &indMem, int &varDir, int base, int &cantVar){
     }
 
     //GENERACION DE CODIGO//=============================================================
-    arreglarMem4bytes(indMemProcedureArreglar - 4, indMem - indMemProcedureArreglar);
+    //OPTIMIZACION, si no se genero ningun procedure elimino el salto innecesario.
+    if((indMem - indMemProcedureArreglar) == 0) indMem -= LARGO_BYTES_JMP_CALL;
+    else arreglarMem4bytes(indMemProcedureArreglar - 4, indMem - indMemProcedureArreglar);
     //===================================================================================
 
     //<proposicion>
@@ -2751,7 +2753,8 @@ void opPushEAX(int &indMem){
 }
 
 void opPopEAX(int &indMem){
-    memoria[indMem++] = 0x58;
+    if (memoria[(indMem-1)] == 0x50) indMem --;
+    else memoria[indMem++] = 0x58;
 }
 
 void opPopEBX(int &indMem){
