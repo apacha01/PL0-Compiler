@@ -197,10 +197,6 @@ int main(int argc, char *argv[]){
 
     cout<<"Todo termino en la linea: "<<linea<<endl;
 
-    cout<<"\n\n\n\tTABLA DE SIMBOLOS AL FINAL DEL PROGRAMA:\n"<<endl;
-    for(int i = 0; i <= 15; i++)
-        cout<<"\t\tNOMBRE:"<<simbTab[i].nombre<<"\t->\tTIPO:"<<simbTab[i].tipo<<"\t->\tVALOR:"<<simbTab[i].valor<<endl;
-
     FILE* exe;
     string exeFile = filename;
 
