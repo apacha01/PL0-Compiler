@@ -582,7 +582,9 @@ proposicion =   [<ident> ":=" <expresion>
             | "while" <condicion> "do" <proposicion>
             | "readln" "(" <ident> {"," <ident>} ")"
             | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
-            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] 
+            | "do" <proposicion> "while" <condicion>
+            ]
 */
 void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     int identValor = 0;
@@ -839,6 +841,21 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             else expectativa(__PARENTESIS_R, f);
         }
         opCALL(indMem, IO_SALTO_LINEA_CONSOLA - indMem);
+    }
+
+    //| "do" <proposicion> "while" <condicion>
+    else if (tokens.tokenType == __DO){
+        expectativa(__DO, f);
+
+        indMemJMP = indMem;
+        proposicion(f, indMem, base, desplazamiento);
+        expectativa(__WHILE, f);
+        condicion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//===========================================
+        arreglarMem4bytes(indMem - 4, LARGO_BYTES_JMP_CALL);
+        opJMP(indMem, indMemJMP - indMem);
+        //=================================================================
     }
 }
 
