@@ -1,0 +1,12 @@
+VAR X;
+
+BEGIN
+	X := 1;
+	repeat
+		BEGIN
+			writeln('I will not mock Ms Dumbface');
+			X := X + 1
+		END
+	UNTIL X > 10;
+END
+.

@@ -35,6 +35,8 @@ using namespace std;
 #define	__ESCRIBIR   		"write"
 #define	__ESCRIBIR_LN		"writeln"
 #define	__LEER_LN    		"readln"
+#define __REPEAT            "repeat"
+#define __UNTIL             "until"
 #define	__IGUAL      		"="
 #define	__DISTINTO   		"<>"
 #define	__MAYOR      		">"
@@ -362,7 +364,7 @@ void ident(FILE *f){
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
         palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
         palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
-        palabra == __LEER_LN){
+        palabra == __LEER_LN || palabra == __REPEAT || palabra == __UNTIL){
             tokens.tokenType = palabra;
             tokens.token = palabraNormal;
     }
@@ -582,7 +584,8 @@ proposicion =   [<ident> ":=" <expresion>
             | "while" <condicion> "do" <proposicion>
             | "readln" "(" <ident> {"," <ident>} ")"
             | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
-            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"]
+            | "repeat" <proposicion> "until" <condicion> ]
 */
 void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     int identValor = 0;
@@ -770,7 +773,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         else expectativa(__PARENTESIS_R, f);
     }
 
-    //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+    //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"]
     else if (tokens.tokenType == __ESCRIBIR_LN){
         expectativa(__ESCRIBIR_LN, f);
 
@@ -839,6 +842,20 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             else expectativa(__PARENTESIS_R, f);
         }
         opCALL(indMem, IO_SALTO_LINEA_CONSOLA - indMem);
+    }
+
+    //| "repeat" <proposicion> "until" <condicion> ]
+    else if (tokens.tokenType == __REPEAT){
+        expectativa(__REPEAT, f);
+        indMemJMP = indMem;
+        proposicion(f, indMem, base, desplazamiento);
+        expectativa(__UNTIL, f);
+        condicion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//===========================================
+        // Tengo que arreglar la memoria actual porque recien hice la condicion
+        arreglarMem4bytes(indMem - 4, indMemJMP - indMem);
+        //=================================================================
     }
 }
 
