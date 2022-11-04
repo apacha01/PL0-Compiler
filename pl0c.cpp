@@ -29,6 +29,7 @@ using namespace std;
 #define	__END        		"end"
 #define	__IF         		"if"
 #define	__THEN       		"then"
+#define __ELSE              "else"
 #define	__WHILE      		"while"
 #define	__DO         		"do"
 #define	__ODD        		"odd"
@@ -362,7 +363,7 @@ void ident(FILE *f){
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
         palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
         palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
-        palabra == __LEER_LN){
+        palabra == __LEER_LN || palabra == __ELSE){
             tokens.tokenType = palabra;
             tokens.token = palabraNormal;
     }
@@ -578,7 +579,7 @@ void bloque(FILE* f, int &indMem, int &varDir, int base, int &cantVar){
 proposicion =   [<ident> ":=" <expresion>
             | "call" <ident>
             | "begin" <proposicion> { ";" <proposicion> } "end"
-            | "if" <condicion> "then" <proposicion>
+            | "if" <condicion> "then" <proposicion> { "else" <proposicion> }
             | "while" <condicion> "do" <proposicion>
             | "readln" "(" <ident> {"," <ident>} ")"
             | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
@@ -588,6 +589,8 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     int identValor = 0;
     int indMemArreglar = 0;
     int indMemJMP = 0;
+    int indMemArreglarElse = 0;
+    int elseIndex = 0;
 
     //[<ident> ":=" <expresion>
     if (tokens.tokenType == __IDENT){
@@ -634,7 +637,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         else expectativa(__END, f);
     }
 
-    //| "if" <condicion> "then" <proposicion>
+    //| "if" <condicion> "then" <proposicion> { "else" <proposicion> }
     else if (tokens.tokenType == __IF){
         expectativa(__IF, f);
         condicion(f, indMem, base, desplazamiento);
@@ -645,9 +648,22 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         expectativa(__THEN, f);
         proposicion(f, indMem, base, desplazamiento);
 
-        //GENERACION DE CODIGO//==========================================
-        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar);     //4 bytes del salto (sin incluir la instrucc. misma)
-        //================================================================
+        if (tokens.tokenType == __ELSE){
+            expectativa(__ELSE, f);
+            opJMP(indMem, 0x00);
+            indMemArreglarElse = indMem;
+            elseIndex = indMem;
+            proposicion(f, indMem, base, desplazamiento);
+            //GENERACION DE CODIGO//==========================================
+            arreglarMem4bytes(indMemArreglarElse - 4, indMem - indMemArreglarElse);
+            arreglarMem4bytes(indMemArreglar - 4, elseIndex - indMemArreglar); //4 bytes del salto
+            //================================================================
+        }
+        else {
+            //GENERACION DE CODIGO//==========================================
+            arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar); //4 bytes del salto (sin incluir la instrucc. misma)
+            //================================================================
+        }
     }
 
     //| "while" <condicion> "do" <proposicion>

@@ -1,0 +1,22 @@
+VAR X;
+
+BEGIN
+	X := 10;
+	if X = 10 then
+		write(X)
+	else
+		begin
+			writeln(X);
+			writeln('Este else no se deberia ver.')
+		end;
+
+	if X <> 10 then
+		write(X)
+	else
+		begin
+			writeln;
+			writeln(X);
+			writeln('Este else si se deberia ver')
+		end;
+END
+.
