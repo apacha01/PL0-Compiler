@@ -176,6 +176,7 @@ string getSymbolType(string,int,int);   // devuelve el tipo del identificador
 void arreglarMem4bytes(int,int);        // arregla la posicion de memoria con el valor que se le pase
 int byte4toint(char,char,char,char);    // devuelve un int a partir de 4 bytes (del mas signif. al menos)
 string tolowerCase(string);             // pasa un string a lower case
+void asignar(int&,int,int,int,FILE*);   // asigna a una variable una expresion (hace <ident> := <expresion>)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -606,15 +607,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     if (tokens.tokenType == __IDENT){
         if((identValor = getSymbolValue(tokens.token, base, desplazamiento)) == -1)
             error("al buscar valor de variable.");
-        verificarIdentificador(LEFT, base, desplazamiento);
-        expectativa(__IDENT, f);
-        expectativa(__ASIGNACION, f);
-        expresion(f, indMem, base, desplazamiento);
-
-        //GENERACION DE CODIGO//=============
-        opPopEAX(indMem);
-        opMoveEDI_EAX(indMem, identValor);
-        //===================================
+        asignar(indMem, identValor, base, desplazamiento, f);
     }
 
     //| "call" <ident>
@@ -868,15 +861,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         //ASIGNACION
         if((identValor = getSymbolValue(tokens.token, base, desplazamiento)) == -1)
             error("al buscar valor de variable.");
-        verificarIdentificador(LEFT, base, desplazamiento);
-        expectativa(__IDENT, f);
-        expectativa(__ASIGNACION, f);
-        expresion(f, indMem, base, desplazamiento);
-
-        //GENERACION DE CODIGO//=============
-        opPopEAX(indMem);
-        opMoveEDI_EAX(indMem, identValor);
-        //===================================
+        asignar(indMem, identValor, base, desplazamiento, f);
 
         expectativa(__TO, f);
 
@@ -2969,4 +2954,16 @@ string tolowerCase(string s){
     transform(s.begin(), s.end(), s.begin(),
     [](unsigned char c){ return tolower(c); });
     return s;
+}
+
+void asignar(int &indMem, int identValor, int base, int desplazamiento, FILE *f){
+    verificarIdentificador(LEFT, base, desplazamiento);
+    expectativa(__IDENT, f);
+    expectativa(__ASIGNACION, f);
+    expresion(f, indMem, base, desplazamiento);
+
+    //GENERACION DE CODIGO//=============
+    opPopEAX(indMem);
+    opMoveEDI_EAX(indMem, identValor);
+    //===================================
 }
