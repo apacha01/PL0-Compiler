@@ -594,7 +594,8 @@ proposicion =   [<ident> ":=" <expresion>
             | "while" <condicion> "do" <proposicion>
             | "readln" "(" <ident> {"," <ident>} ")"
             | "write" "(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"
-            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+            | "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] 
+            | "for" <ident> ":=" <expresion> "to" <expresion> "do" <proposicion>]
 */
 void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
     int identValor = 0;
@@ -782,7 +783,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
         else expectativa(__PARENTESIS_R, f);
     }
 
-    //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"] ]
+    //| "writeln" ["(" (<expresion> | <cadena>) {"," (<expresion> | <cadena>)} ")"]
     else if (tokens.tokenType == __ESCRIBIR_LN){
         expectativa(__ESCRIBIR_LN, f);
 
@@ -851,6 +852,66 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
             else expectativa(__PARENTESIS_R, f);
         }
         opCALL(indMem, IO_SALTO_LINEA_CONSOLA - indMem);
+    }
+
+    //| "for" <ident> ":=" <expresion> "to" <expresion> "do" <proposicion>]
+    // es equitativo a -> 
+    /* <ident> ":=" <expresion>
+        while <ident> "<=" <expresion> do
+            <proposicion>
+            <ident> ":=" <ident> + 1;
+
+    */
+    else if (tokens.tokenType == __FOR) {
+        expectativa(__FOR, f);
+
+        //ASIGNACION
+        if((identValor = getSymbolValue(tokens.token, base, desplazamiento)) == -1)
+            error("al buscar valor de variable.");
+        verificarIdentificador(LEFT, base, desplazamiento);
+        expectativa(__IDENT, f);
+        expectativa(__ASIGNACION, f);
+        expresion(f, indMem, base, desplazamiento);
+
+        //GENERACION DE CODIGO//=============
+        opPopEAX(indMem);
+        opMoveEDI_EAX(indMem, identValor);
+        //===================================
+
+        expectativa(__TO, f);
+
+        //parte while do
+        
+        indMemJMP = indMem;
+        // pusheo en eax el offset del identificador
+        opMoveEAX_EDI(indMem, identValor);
+        opPushEAX(indMem);
+
+        // expresion hizo push del valor al stack
+        expresion(f, indMem, base, desplazamiento);
+        
+        opPopEAX(indMem);   // expresion
+        opPopEBX(indMem);   // valor de la var
+        opCMP(indMem);
+        opJLE(indMem);
+        opJMP(indMem,0x00);
+        indMemArreglar = indMem;
+
+        expectativa(__DO, f);
+
+        proposicion(f, indMem, base, desplazamiento);
+
+        opMoveEAX(indMem, 1);       //1 en ebx
+        opPushEAX(indMem);
+        opPopEBX(indMem);
+
+        opMoveEAX_EDI(indMem, identValor);  //hago ident := ident + 1;
+        opADD(indMem);
+        opMoveEDI_EAX(indMem, identValor);
+
+        arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar + LARGO_BYTES_JMP_CALL);
+        opJMP(indMem, indMemJMP - indMem);
+
     }
 }
 
