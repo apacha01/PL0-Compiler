@@ -6,6 +6,8 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string>
+#include <cctype>
+#include <algorithm>
 #include <cstdlib>
 #include <iomanip>
 
@@ -171,6 +173,7 @@ int getSymbolValue(string,int,int);     // devuelve el valor del identificador
 string getSymbolType(string,int,int);   // devuelve el tipo del identificador
 void arreglarMem4bytes(int,int);        // arregla la posicion de memoria con el valor que se le pase
 int byte4toint(char,char,char,char);    // devuelve un int a partir de 4 bytes (del mas signif. al menos)
+string tolowerCase(string);             // pasa un string a lower case
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -357,7 +360,7 @@ void ident(FILE *f){
     string palabraNormal = palabra;
 
     //paso todo a minus
-    for (int i = 0; i < palabra.length(); i++) palabra[i] = tolower(palabra[i]);
+    palabra = tolowerCase(palabra);
 
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
         palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
@@ -1030,7 +1033,7 @@ void verificarIdentificador(int lado, int base, int desplazamiento){
     int index = -1;
 
     while(finTabla != -1){
-        if (tokens.token == simbTab[finTabla].nombre)  index = finTabla;
+        if (tolowerCase(tokens.token) == tolowerCase(simbTab[finTabla].nombre))  index = finTabla;
         finTabla--;
     }
 
@@ -2861,7 +2864,7 @@ int getSymbolValue(string token, int base, int desplazamiento){
     int finTabla = base + desplazamiento - 1;
 
     while(finTabla != -1){
-        if (token == simbTab[finTabla].nombre)  return simbTab[finTabla].valor;
+        if (tolowerCase(token) == tolowerCase(simbTab[finTabla].nombre))  return simbTab[finTabla].valor;
         finTabla--;
     }
     return -1;
@@ -2871,7 +2874,7 @@ string getSymbolType(string token, int base, int desplazamiento){
     int finTabla = base + desplazamiento - 1;
 
     while(finTabla != -1){
-        if (token == simbTab[finTabla].nombre)  return simbTab[finTabla].tipo;
+        if (tolowerCase(token) == tolowerCase(simbTab[finTabla].nombre))  return simbTab[finTabla].tipo;
         finTabla--;
     }
     return "";
@@ -2891,4 +2894,10 @@ int byte4toint(char ms, char um, char lm, char ls){
         aux3 = (um<<16),
         aux4 = (ms<<24);
     return (aux + aux2 + aux3 + aux4);
+}
+
+string tolowerCase(string s){
+    transform(s.begin(), s.end(), s.begin(),
+    [](unsigned char c){ return tolower(c); });
+    return s;
 }
