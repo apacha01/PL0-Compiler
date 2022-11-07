@@ -37,8 +37,6 @@ using namespace std;
 #define	__ESCRIBIR   		"write"
 #define	__ESCRIBIR_LN		"writeln"
 #define	__LEER_LN   		"readln"
-#define __FOR               "for"
-#define __TO                "to"
 #define	__IGUAL      		"="
 #define	__DISTINTO   		"<>"
 #define	__MAYOR      		">"
@@ -368,7 +366,7 @@ void ident(FILE *f){
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
         palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
         palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
-        palabra == __LEER_LN || palabra == __FOR || palabra == __TO){
+        palabra == __LEER_LN){
             tokens.tokenType = palabra;
             tokens.token = palabraNormal;
     }
