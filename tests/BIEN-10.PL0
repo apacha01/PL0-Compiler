@@ -19,7 +19,7 @@ begin
 	end;
 
 	write(k1, ' ', -k2, ' ');
-	n1 := K1;
+	N1 := K1;
 	n2 := -K2;
 
 	for cont := 2 to cant - 1 do

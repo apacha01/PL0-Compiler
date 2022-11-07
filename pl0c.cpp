@@ -149,6 +149,7 @@ void opMoveEDI(int&);                   // pone el opcode para la operacion MOVE
 void opMoveEAX_EDI(int&,int);           // pone el opcode para la operacion MOVE EAX, EDI en memoria
 void opMoveEDI_EAX(int&,int);           // pone el opcode para la operacion MOVE EDI, EAX en memoria
 void opMoveEAX(int&,int);               // pone el opcode para la operacion MOVE EAX en memoria
+void opMoveEBX(int&,int);               // pone el opcode para la operacion MOVE EBX en memoria
 void opXCHG(int&);                      // pone el opcode para la operacion XCHG en memoria
 void opPushEAX(int&);                   // pone el opcode para la operacion PUSH EAX en memoria
 void opPopEAX(int&);                    // pone el opcode para la operacion POP EAX en memoria
@@ -177,6 +178,7 @@ void arreglarMem4bytes(int,int);        // arregla la posicion de memoria con el
 int byte4toint(char,char,char,char);    // devuelve un int a partir de 4 bytes (del mas signif. al menos)
 string tolowerCase(string);             // pasa un string a lower case
 void asignar(int&,int,int,int,FILE*);   // asigna a una variable una expresion (hace <ident> := <expresion>)
+void incIdent(int&,int);                // incrementa en uno una variable (hace <ident> := <ident> + 1)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //MAIN
@@ -886,13 +888,7 @@ void proposicion(FILE* f, int &indMem, int base, int desplazamiento){
 
         proposicion(f, indMem, base, desplazamiento);
 
-        opMoveEAX(indMem, 1);       //1 en ebx
-        opPushEAX(indMem);
-        opPopEBX(indMem);
-
-        opMoveEAX_EDI(indMem, identValor);  //hago ident := ident + 1;
-        opADD(indMem);
-        opMoveEDI_EAX(indMem, identValor);
+        incIdent(indMem, identValor);
 
         arreglarMem4bytes(indMemArreglar - 4, indMem - indMemArreglar + LARGO_BYTES_JMP_CALL);
         opJMP(indMem, indMemJMP - indMem);
@@ -2797,6 +2793,16 @@ void opMoveEAX(int &indMem, int val){
     }
 }
 
+void opMoveEBX(int &indMem, int val){
+    memoria[indMem++] = 0xBB;
+
+    arr4Bytes d;
+    inttchar(val, d);
+    for(int i = 0; i < 4; i++){
+        memoria[indMem++] = d[i];
+    }
+}
+
 void opXCHG(int &indMem){
     memoria[indMem++] = 0x93;
 }
@@ -2966,4 +2972,12 @@ void asignar(int &indMem, int identValor, int base, int desplazamiento, FILE *f)
     opPopEAX(indMem);
     opMoveEDI_EAX(indMem, identValor);
     //===================================
+}
+
+void incIdent(int &indMem, int identValor){
+    opMoveEBX(indMem, 1);               //1 en ebx
+
+    opMoveEAX_EDI(indMem, identValor);  //en eax el valor del ident
+    opADD(indMem);                      //hago ident := ident + 1;
+    opMoveEDI_EAX(indMem, identValor);
 }
