@@ -36,7 +36,9 @@ using namespace std;
 #define	__ODD        		"odd"
 #define	__ESCRIBIR   		"write"
 #define	__ESCRIBIR_LN		"writeln"
-#define	__LEER_LN    		"readln"
+#define	__LEER_LN   		"readln"
+#define __FOR               "for"
+#define __TO                "to"
 #define	__IGUAL      		"="
 #define	__DISTINTO   		"<>"
 #define	__MAYOR      		">"
@@ -307,6 +309,7 @@ void lexer(FILE *f){
         ident(f);
         return;
     }
+
     if(isdigit(lectura)){
         numero(f);
         return;
@@ -365,7 +368,7 @@ void ident(FILE *f){
     if(palabra == __CONSTANTE || palabra == __VARIABLE || palabra == __PROCEDURE || palabra == __CALL ||
         palabra == __BEGIN || palabra == __END || palabra == __IF || palabra == __THEN || palabra == __WHILE ||
         palabra == __DO || palabra == __ODD || palabra == __ESCRIBIR || palabra == __ESCRIBIR_LN ||
-        palabra == __LEER_LN){
+        palabra == __LEER_LN || palabra == __FOR || palabra == __TO){
             tokens.tokenType = palabra;
             tokens.token = palabraNormal;
     }
@@ -490,6 +493,7 @@ void programa(FILE* f){
 void bloque(FILE* f, int &indMem, int &varDir, int base, int &cantVar){
     int desplazamiento = 0;
     int indMemProcedureArreglar = 0;
+    bool isNeg = false;
 
     opJMP(indMem, 0x00);
     indMemProcedureArreglar = indMem;
@@ -516,7 +520,12 @@ void bloque(FILE* f, int &indMem, int &varDir, int base, int &cantVar){
 
             expectativa(__IGUAL, f);
 
-            if(tokens.tokenType == __NUMERO) agregarSimbolo(__NUMERO, base, desplazamiento, varDir);
+            if(tokens.tokenType == __RESTA){
+                expectativa(__RESTA, f);
+                isNeg = true;
+            }
+            if(tokens.tokenType == __NUMERO)    agregarSimbolo(__NUMERO, base, desplazamiento, varDir);
+            if(isNeg)   simbTab[base+desplazamiento-1].valor = simbTab[base+desplazamiento-1].valor * -1;
             expectativa(__NUMERO, f);
         }
 
@@ -1025,7 +1034,6 @@ void agregarSimbolo(string tipo, int base, int desplazamiento, int &varDir){
     if(tipo == __CONSTANTE) simbTab[finTabla].valor = 0;
     if(tipo == __VARIABLE)  simbTab[finTabla].valor = varDir;
     if(tipo == __PROCEDURE) simbTab[finTabla].valor = varDir;
-
 }
 
 void verificarIdentificador(int lado, int base, int desplazamiento){
